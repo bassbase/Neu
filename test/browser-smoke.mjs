@@ -10,7 +10,7 @@ import { createChatServer } from '../server.mjs';
 
 const listen = s => new Promise(resolve => s.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${s.address().port}`)));
 const code = '## Fertiges Projekt\n\n```html filename=index.html\n<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body><h1>Mein Projekt</h1><button id="count">0</button><script src="app.js"></script></body></html>\n```\n\n```css filename=style.css\nbody { background: #e9f7d9; color: #173208; }\n```\n\n```javascript filename=app.js\ndocument.getElementById("count").onclick = e => e.target.textContent = String(Number(e.target.textContent) + 1);\n```';
-let answer = code; let imageStatus = 200; let lastRequest;
+let answer = code; let imageStatus = 200; let lastRequest; let queue = []; let chatCalls = 0;
 const png = (await sharp({ create: { width: 24, height: 24, channels: 3, background: 'blue' } }).png().toBuffer()).toString('base64');
 const gateway = http.createServer(async (req, res) => {
   if (req.url === '/readyz') { res.setHeader('Content-Type', 'application/json'); return res.end('{"status":"ok"}'); }
@@ -18,8 +18,10 @@ const gateway = http.createServer(async (req, res) => {
   if (req.url.startsWith('/v1/models')) { res.setHeader('Content-Type', 'application/json'); return res.end('{"data":[{"id":"auto","available":true}]}'); }
   let body = ''; for await (const chunk of req) body += chunk; lastRequest = JSON.parse(body || '{}');
   if (req.url === '/v1/images/generations') { res.writeHead(imageStatus, { 'Content-Type': 'application/json' }); return res.end(imageStatus === 200 ? JSON.stringify({ data: [{ b64_json: png }], model: 'test-image' }) : '{"error":{"message":"no models"}}'); }
+  chatCalls++; const current = queue.shift() ?? { text: answer, finish: 'stop' };
+  if (current.error) { res.writeHead(current.error, { 'Content-Type': 'application/json' }); return res.end('{}'); }
   res.writeHead(200, { 'Content-Type': 'text/event-stream' });
-  res.end('data: ' + JSON.stringify({ model: 'test-code', choices: [{ delta: { content: answer }, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n');
+  res.end('data: ' + JSON.stringify({ model: 'test-code', choices: [{ delta: { content: current.text }, finish_reason: current.finish }] }) + '\n\ndata: [DONE]\n\n');
 });
 const gatewayUrl = await listen(gateway);
 const server = createChatServer({ gateway: gatewayUrl, apiKey: 'browser-test-key', configFile: path.join(os.tmpdir(), 'no-browser-test-config-' + Math.random()) });
@@ -29,7 +31,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH 
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, acceptDownloads: true });
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto(base); await page.waitForFunction(() => document.querySelector('#status').textContent === 'Verbunden');
+  await page.goto(base); await page.locator('#source').selectOption('gateway'); await page.locator('#auto-continue').uncheck(); await page.waitForFunction(() => document.querySelector('#status').textContent === 'Verbunden');
   await page.locator('#mode').selectOption('code');
   await page.locator('#files').setInputFiles({ name: 'idee.txt', mimeType: 'text/plain', buffer: Buffer.from('Baue einen Zaehler.') });
   await page.waitForFunction(() => document.querySelectorAll('.attachment').length === 1 && !document.querySelector('#attach').disabled);
@@ -65,7 +67,24 @@ try {
   await page.locator('#mode').selectOption('image'); await page.locator('#prompt').fill('Ein blaues Bild'); await page.locator('#send').click();
   await page.waitForFunction(() => !document.querySelector('#send').disabled); assert.equal(await page.locator('.generated-image').count(), 1);
   imageStatus = 503; await page.locator('#prompt').fill('Ein weiteres Bild'); await page.locator('#send').click(); await page.waitForFunction(() => !document.querySelector('#send').disabled); assert.match(await page.locator('#notice').textContent(), /Bildmodell/);
-  await page.locator('#mode').selectOption('code'); await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#mode').selectOption('code'); await page.locator('#auto-continue').check();
+  const beforeAuto = chatCalls; queue = [{ text: 'Teil 1', finish: 'length' }, { text: 'Teil 2 fertig', finish: 'stop' }];
+  await page.locator('#prompt').fill('Automatisch fortsetzen'); await page.locator('#send').click();
+  await page.waitForFunction(() => document.querySelectorAll('.assistant .text')[document.querySelectorAll('.assistant .text').length - 1].textContent.trim() === 'Teil 2 fertig' && !document.querySelector('#send').disabled);
+  assert.equal(chatCalls, beforeAuto + 2);
+  queue = [{ text: 'Anfang', finish: 'length' }, { error: 429 }]; const beforeError = chatCalls;
+  await page.locator('#prompt').fill('Bei Fehler stoppen'); await page.locator('#send').click();
+  await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('ausgelastet') && !document.querySelector('#send').disabled);
+  await page.waitForTimeout(700); assert.equal(chatCalls, beforeError + 2);
+  queue = [{ text: 'Stopptest', finish: 'length' }]; const beforeStop = chatCalls;
+  await page.locator('#prompt').fill('Stopp testen'); await page.locator('#send').click();
+  await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('startet'));
+  await page.locator('#stop').click(); await page.waitForTimeout(700); assert.equal(chatCalls, beforeStop + 1);
+  queue = [1,2,3,4,5].map(i => ({text: 'Fortsetzung ' + i, finish: 'length'})); const beforeCap = chatCalls;
+  await page.locator('#prompt').fill('Folgen begrenzen'); await page.locator('#send').click();
+  await page.waitForFunction(() => document.querySelector('#notice').textContent.includes('Drei automatische'));
+  assert.equal(chatCalls, beforeCap + 4); queue = [];
+  await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.screenshot({ path: path.join(temp, 'mobile.png'), fullPage: true });
   await page.route('**/healthz', route => route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"Nicht gefunden."}' }));

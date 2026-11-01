@@ -35,7 +35,7 @@ async function fixture(t) {
     return { status: response.status, ...await response.json() };
   }
   async function chat(ids) {
-    return fetch(base + '/api/chat', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'auto', messages: [{ role: 'user', content: 'Bitte verbessern.', attachments: ids }] }) });
+    return fetch(base + '/api/chat', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'gateway', model: 'auto', messages: [{ role: 'user', content: 'Bitte verbessern.', attachments: ids }] }) });
   }
   return { base, headers, sent, upload, chat, noVision: () => { failVision = true; } };
 }

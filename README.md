@@ -1,14 +1,30 @@
 # Neu Chat
 
+## Lokal ohne externe KI-API-Gebuehren (ab Version 1.4)
+
+Der Standard ist jetzt **Lokal (Ollama)**. Einmal `Lokal-einrichten.cmd` oeffnen: Das Windows-Skript installiert bei Bedarf Ollama ueber winget, startet dessen lokalen Dienst und laedt `qwen2.5:3b` als kleines Text-/Code-Startmodell herunter (ungefaehr 2 GB). Danach oeffnet es den Chat. Bei spaeteren Starts reicht `Start.cmd`.
+
+Die App kontaktiert in diesem Modus nur den lokalen Ollama-Dienst auf Port 11434. API-Schluessel werden dabei nicht uebertragen; der FreeLLMAPI-Gateway wird nicht als Ersatz benutzt. Cloud-Modelle und Modelle ohne bestaetigte lokale Metadaten werden abgewiesen. Bei fehlendem Ollama oder Modell erscheint eine Einrichtungsanleitung, kein kostenpflichtiger Ersatzaufruf. Bild-Erstellung ueber externe Anbieter ist lokal gesperrt; Bildanalyse braucht ein eigenes lokal installiertes Vision-Modell. Das kleine Startmodell ist kein Vision-Modell.
+
+Das beseitigt externe KI-API-Kontingente fuer den lokalen Chat, aber keine Grenzen von Arbeitsspeicher, Hardware, Kontextfenster und Geschwindigkeit. Strom, Hardware und Internet fuer Downloads bleiben erforderlich. Es ist keine identische Kopie der proprietaeren Modelle/Funktionen von ChatGPT, Claude oder Grok und kein Versprechen unbegrenzter oder allumfassender kostenloser Leistung. Die Windows-Einrichtung und eine echte lokale Modell-Inferenz wurden hier nicht ausgefuehrt; der Adapter wurde mit simuliertem Ollama getestet.
+
+FreeLLMAPI bleibt eine **bewusste Auswahl** im Feld „KI-Betrieb“. Dazu bei Bedarf `Gateway-starten.cmd` oeffnen und im Browser FreeLLMAPI waehlen. Es gelten dann deine Anbieterpreise und Kontingente; die App kann deren Abrechnung nicht kontrollieren oder kostenlose Nutzung garantieren. Der normale `Start.cmd` startet keinen Gateway mehr. `Claude.cmd` verwendet weiterhin den Gateway und ist nicht automatisch lokaler oder kostenloser Claude-Zugang. Bereits anderweitig gestartete Dienste laufen unabhaengig weiter. Ollama ist ein eigenes Programm; `Stop.cmd` beendet nur die durch unsere Starter registrierten Chat-/Gateway-Prozesse, nicht die Ollama-App.
+
+## Automatische Fortsetzung
+
+Die Checkbox „Automatisch fortsetzen“ ist standardmaessig aktiv. Bei einem Antwortlimit oder einem in dieser Antwort offenen Codeblock fragt die App selbststaendig weiter und sammelt weiterhin vollstaendige Projektdateien. Angefangene Dateien werden vollstaendig neu angefordert. Eine Folge hat maximal drei automatische Anschlussantworten; die Zahl ist sichtbar. Danach kann man bewusst manuell Fortsetzen waehlen.
+
+„Stoppen“ beendet die laufende Anfrage und geplante Folge. Anbieterfehler, erschoepfte Kontingente und wiederholte identische Antworten starten keine Endlosschleife. Ein neu eingegebener Text wird nicht von einer automatischen Fortsetzung ueberschrieben. Im Gateway-Modus verbraucht jede Folge die Kontingente des Anbieters und kann gemaess dessen Tarif berechnet werden. Dies ist automatische Antwortfortsetzung, keine eingebaute Websuche. Modell-Fallbacks innerhalb von FreeLLMAPI bleiben dessen eigene Funktion.
+
 Dein eigener lokaler KI-Chat mit deutscher Oberflaeche, Modellwahl, Datei-Anhaengen, laufend angezeigten Antworten und Verbindung zu FreeLLMAPI.
 
 ## Windows: starten
 
-Voraussetzungen: Node.js 22 oder 24 und deine bereits eingerichtete FreeLLMAPI-Installation unter `%USERPROFILE%\FreeLLMAPI` mit mindestens einem funktionierenden Anbieter.
+Voraussetzung: Node.js 22 oder 24. Fuer lokalen Betrieb Ollama mit heruntergeladenem Modell einrichten (oben). FreeLLMAPI unter `%USERPROFILE%\FreeLLMAPI` wird nur fuer den optionalen Gateway-Betrieb benoetigt.
 
 1. Diesen Projektordner herunterladen und entpacken.
-2. `Start.cmd` doppelt anklicken. Der Starter installiert bei Bedarf die im Lockfile festgelegten Pakete einschliesslich des Videowerkzeugs (Internet erforderlich). Beim ersten Start dauert dies einige Minuten. Danach startet er FreeLLMAPI und den Chat im Hintergrund und oeffnet deinen Browser. Es muessen keine Server-Terminals geoeffnet bleiben.
-3. Beim ersten Start den **zentralen FreeLLMAPI-Schluessel** aus dem lokalen FreeLLMAPI-Dashboard unter „Schluessel“ eintragen. Den Google-Schluessel verwaltest du ausschliesslich dort.
+2. `Start.cmd` doppelt anklicken. Der Starter installiert bei Bedarf die im Lockfile festgelegten Pakete einschliesslich des Videowerkzeugs (Internet erforderlich). Beim ersten Start dauert dies einige Minuten. Danach startet er den Chat im Hintergrund (FreeLLMAPI nur auf ausdruecklichen Start) und oeffnet deinen Browser. Es muessen keine Server-Terminals geoeffnet bleiben.
+3. Fuer lokalen Betrieb ist kein API-Schluessel notwendig. Nur bei ausdruecklicher Wahl von FreeLLMAPI den **zentralen FreeLLMAPI-Schluessel** aus dem Dashboard unter „Schluessel“ eintragen.
 4. Eine Nachricht schreiben. Enter sendet, Shift+Enter macht einen Absatz. Mit „Stoppen“ brichst du die Antwort ab.
 
 `Claude.cmd` startet alternativ Claude Code im Ordner `%USERPROFILE%\Claude-Projekte` und bei Bedarf den Gateway im Hintergrund. Es verwendet den einmal im Chat gespeicherten zentralen Schluessel automatisch; falls noch keiner gespeichert ist, fragt es ihn verdeckt ab. Ein vorhandenes `FREELLMAPI_API_KEY` wird bevorzugt und bleibt erhalten. Der Schluessel wird nur im Kindprozess verwendet, nicht als Befehlsargument uebergeben. Es verwendet `auto`, sodass FreeLLMAPI das Modell waehlt. Der Starter aendert keine bestehende Claude-Konfiguration.

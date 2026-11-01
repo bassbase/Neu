@@ -1,11 +1,12 @@
 import { renderAnswer, saveFile } from './workspace.js';
+import { parseProjectFiles } from './project-files.js';
 const $ = selector => document.querySelector(selector);
-const CLIENT_VERSION = '1.3.0';
+const CLIENT_VERSION = '1.4.0';
 const messages = [];
 let busy = false;
 let controller;
 let configured = false;
-let serverCurrent = false;
+let serverCurrent = false; let refreshRound = 0;
 let pendingFiles = [];
 let uploading = false;
 const allFiles = new Set();
@@ -13,6 +14,8 @@ const projectFiles = new Map();
 const projectBases = new Map();
 const unfinishedFiles = new Set();
 let exporting = false;
+let autoTimer; let autoRounds = 0; let autoCancelled = false; let lastAutoAnswer = '';
+function stopAutomatic() { autoCancelled = true; clearTimeout(autoTimer); autoTimer = undefined; }
 const dialog = $('#settings');
 function notice(text) { $('#notice').textContent = text; $('#notice').hidden = !text; }
 async function api(path, options) {
@@ -23,23 +26,27 @@ async function api(path, options) {
   return data;
 }
 async function refresh() {
+  const round = ++refreshRound; const requestedSource = $('#source').value;
   try {
     const healthResponse = await fetch('/healthz');
     const health = await healthResponse.json().catch(() => ({}));
     serverCurrent = healthResponse.ok && health.app === 'neu-chat' && health.version === CLIENT_VERSION && health.features?.uploads;
     if (!serverCurrent) throw new Error('Die Webseite und der Hintergrundserver passen nicht zusammen. Bitte die neue Version mit Start.cmd starten und danach Strg+F5 druecken. Bei alten manuell gestarteten Servern zuerst Strg+C im zugehoerigen Fenster.');
-    const data = await api('/api/status');
+    const data = await api('/api/status?source=' + requestedSource);
+    if (round !== refreshRound || requestedSource !== $('#source').value) return;
     configured = data.configured;
     $('#status').textContent = data.ready ? 'Verbunden' : configured ? 'Anbieter prüfen' : 'Schlüssel fehlt';
     $('#status').classList.toggle('ready', data.ready);
     const selected = $('#model').value;
-    $('#model').replaceChildren(new Option('Automatisch · mit Fallback', 'auto'));
+    $('#model').replaceChildren(new Option($('#source').value === 'local' ? 'Automatisch · nur lokal' : 'Automatisch · mit Fallback', 'auto'));
     for (const model of data.models) if (!['auto', 'fusion'].includes(model.id)) $('#model').add(new Option(model.name, model.id));
     if ([...$('#model').options].some(o => o.value === selected)) $('#model').value = selected;
     if (!configured) dialog.showModal();
-    else if (!data.ready) notice('FreeLLMAPI ist verbunden, aber noch kein Anbieter bereit. Prüfe deinen Google-Schlüssel im Dashboard.');
+    else if (!data.ready) notice(data.message ?? 'FreeLLMAPI ist nicht bereit. Gateway-starten.cmd oeffnen und Anbieter im Dashboard pruefen.');
     else notice('');
+    $('#routing-label').textContent = requestedSource === 'local' ? '✦ Lokal · kein externer KI-API-Aufruf' : '✦ FreeLLMAPI · Anbietertarife gelten';
   } catch (error) {
+    if (round !== refreshRound) return;
     $('#status').textContent = 'Verbindung prüfen';
     $('#status').classList.remove('ready');
     notice(error.message);
@@ -69,18 +76,21 @@ function addMessage(role, content) {
 }
 function scroll() { $('#conversation').scrollTop = $('#conversation').scrollHeight; }
 function setBusy(value) {
-  busy = value; $('#send').disabled = value || uploading; $('#stop').hidden = !value; $('#model').disabled = value || $('#mode').value === 'image'; $('#mode').disabled = value; $('#new-chat').disabled = value || uploading; $('#attach').disabled = value || uploading; renderProject();
+  busy = value; $('#send').disabled = value || uploading; $('#stop').hidden = !value; $('#model').disabled = value || $('#mode').value === 'image'; $('#mode').disabled = value; $('#source').disabled = value; $('#new-chat').disabled = value || uploading; $('#attach').disabled = value || uploading; renderProject();
 }
-async function send(event) {
+async function send(event, automatic = false) {
   event.preventDefault();
   if (busy || uploading) return;
+  if (!automatic) { clearTimeout(autoTimer); autoCancelled = false; autoRounds = 0; lastAutoAnswer = ''; }
+  else autoRounds++;
+  autoTimer = undefined;
   const content = $('#prompt').value.trim();
   if (!content && !pendingFiles.length) return;
   if (!configured) { dialog.showModal(); return; }
   if (!serverCurrent) { notice('Bitte zuerst den Hintergrundserver aktualisieren: neue Start.cmd oeffnen und Strg+F5 druecken.'); return; }
   if ($('#mode').value === 'image') { await generateImage(content); return; }
   if (messages.length >= 78) { notice('Dieser Chat ist sehr lang. Starte bitte einen neuen Chat.'); return; }
-  notice(''); setBusy(true); $('#continue').hidden = true;
+  notice(automatic ? `Automatische Folgeantwort ${autoRounds}/3 laeuft …` : ''); setBusy(true); $('#continue').hidden = true;
   const sentFiles = [...pendingFiles];
   const current = { role: 'user', content, ...(sentFiles.length ? { attachments: sentFiles.map(f => f.id) } : {}) };
   const history = [...messages, current];
@@ -89,9 +99,9 @@ async function send(event) {
   $('#prompt').value = ''; $('#prompt').style.height = '';
   const output = addMessage('assistant', 'Denkt nach …'); output.article.classList.add('pending'); scroll();
   controller = new AbortController();
-  let answer = ''; let done = false; let truncated = false;
+  let answer = ''; let done = false; let truncated = false; let followUp = false;
   try {
-    const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: $('#model').value, mode: $('#mode').value, messages: history }), signal: controller.signal });
+    const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: $('#model').value, source: $('#source').value, mode: $('#mode').value, messages: history }), signal: controller.signal });
     if (!response.ok) throw new Error((await response.json()).error ?? 'Anfrage fehlgeschlagen.');
     const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
     async function line(value) {
@@ -118,6 +128,8 @@ async function send(event) {
     output.setContent(answer); renderAnswer(output.text, answer, openPreview, { collect: collectProject, export: exportProject });
     messages.push(current, { role: 'assistant', content: answer });
     $('#continue').hidden = !(truncated || unfinishedFiles.size);
+    followUp = (truncated || parseProjectFiles(answer).unfinished.length > 0) && answer.trim() !== lastAutoAnswer;
+    lastAutoAnswer = answer.trim();
     if (truncated || unfinishedFiles.size) notice('Die Antwort oder eine Datei ist noch unvollstaendig. Mit Fortsetzen werden angefangene Dateien komplett neu angefordert; abgeschnittene Teile werden nicht als fertige Dateien exportiert.');
   } catch (error) {
     output.text.textContent = answer || (error.name === 'AbortError' ? 'Antwort gestoppt.' : 'Keine Antwort erhalten.');
@@ -125,21 +137,29 @@ async function send(event) {
     notice(error.name === 'AbortError' ? 'Gestoppt. Deine Nachricht steht für einen neuen Versuch bereit.' : error.message);
     $('#prompt').value = content;
     pendingFiles = sentFiles; renderFiles();
-  } finally { output.article.classList.remove('pending'); setBusy(false); renderFiles(); $('#prompt').focus(); }
+  } finally {
+    output.article.classList.remove('pending'); setBusy(false); renderFiles(); $('#prompt').focus();
+    if (followUp && $('#auto-continue').checked && !autoCancelled && autoRounds < 3) {
+      notice(`Automatische Fortsetzung ${autoRounds + 1}/3 startet. Stoppen beendet die ganze Folge.`);
+      $('#stop').hidden = false;
+      autoTimer = setTimeout(() => { if (autoCancelled || !$('#auto-continue').checked) return; if ($('#prompt').value.trim()) { stopAutomatic(); $('#stop').hidden = true; notice('Automatische Fortsetzung angehalten: Dein neuer Entwurf bleibt erhalten.'); return; } $('#prompt').value = continuationPrompt(); send({ preventDefault() {} }, true); }, 500);
+    } else if (followUp && autoRounds >= 3) notice('Drei automatische Folgeantworten abgeschlossen. Bei Bedarf manuell Fortsetzen waehlen; es wird nicht endlos weiter angefragt.');
+  }
 }
 $('#chat-form').addEventListener('submit', send);
-$('#stop').addEventListener('click', () => controller?.abort());
+$('#stop').addEventListener('click', () => { stopAutomatic(); controller?.abort(); $('#stop').hidden = true; notice('Automatische Folge und laufende Anfrage gestoppt.'); });
 $('#prompt').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#chat-form').requestSubmit(); } });
 $('#prompt').addEventListener('input', () => { $('#prompt').style.height = 'auto'; $('#prompt').style.height = `${Math.min($('#prompt').scrollHeight, 180)}px`; });
 $('#save-chat').addEventListener('click', () => { if (!messages.length) return notice('Noch kein Chat zum Exportieren.'); saveFile('Neu-Chat.md', messages.map(m => `## ${m.role === 'user' ? 'Du' : 'Neu'}\n\n${m.content}`).join('\n\n')); });
 $('#new-chat').addEventListener('click', () => {
+  stopAutomatic();
   for (const id of allFiles) fetch('/api/attachments/' + id, { method: 'DELETE' }).catch(() => {});
   allFiles.clear(); projectFiles.clear(); projectBases.clear(); unfinishedFiles.clear(); renderProject(); pendingFiles = []; renderFiles(); messages.length = 0; $('#continue').hidden = true;
   $('#messages').replaceChildren(); $('#welcome').hidden = false; $('#prompt').value = ''; notice(''); $('#prompt').focus();
 });
 $('#connection').addEventListener('click', () => dialog.showModal());
 $('#close-settings').addEventListener('click', () => dialog.close());
-$('#model').addEventListener('change', () => { $('#routing-label').textContent = $('#model').value === 'auto' ? '✦ Automatische Modellwahl über FreeLLMAPI' : '✦ Gewähltes Modell · Fallback gemäß Gateway'; });
+$('#model').addEventListener('change', () => { $('#routing-label').textContent = $('#source').value === 'local' ? '✦ Lokales Modell · kein Cloud-Fallback' : $('#model').value === 'auto' ? '✦ Automatische Modellwahl über FreeLLMAPI' : '✦ Gewähltes Modell · Fallback gemäß Gateway'; });
 for (const button of document.querySelectorAll('[data-prompt]')) button.addEventListener('click', () => { $('#prompt').value = button.dataset.prompt; $('#prompt').focus(); });
 $('#connection-form').addEventListener('submit', async e => {
   e.preventDefault(); $('#connection-error').textContent = ''; $('#save-key').disabled = true;
@@ -171,13 +191,13 @@ async function upload(files) {
   if (files.length + pendingFiles.length > 5) { notice('Bitte höchstens 5 Dateien pro Nachricht anhängen.'); return; }
   if ([...files].some(f => f.size > 25 * 1024 * 1024)) { notice('Pro Datei sind höchstens 25 MB möglich.'); return; }
   if ([...files].reduce((n, f) => n + f.size, 0) > 50 * 1024 * 1024) { notice('Bitte zusammen höchstens 50 MB auf einmal hochladen.'); return; }
-  uploading = true; setBusy(false); $('#attach').textContent = 'Wird gelesen …'; notice('Dateien werden lokal geprüft. Erst beim Senden erhält der KI-Anbieter die gelesenen Inhalte.');
+  uploading = true; setBusy(false); $('#attach').textContent = 'Wird gelesen …'; notice($('#source').value === 'local' ? 'Dateien werden lokal gelesen und beim Senden nur an dein lokales Modell uebergeben.' : 'Dateien werden lokal geprueft. Beim Senden erhaelt dein Anbieter die gelesenen Inhalte.');
   try {
     const data = new FormData(); for (const file of files) data.append('files', file);
     const response = await api('/api/attachments', { method: 'POST', body: data });
     for (const file of response.attachments) { pendingFiles.push(file); allFiles.add(file.id); if (file.project) projectBases.set(file.id, file); }
     renderProject(true);
-    notice(response.errors.length ? response.errors.map(f => `${f.name}: ${f.error}`).join('\n') : 'Anhänge bereit. Beim Senden werden gelesener Text und ggf. Bilder an deinen KI-Anbieter übertragen.');
+    notice(response.errors.length ? response.errors.map(f => `${f.name}: ${f.error}`).join('\n') : ($('#source').value === 'local' ? 'Anhaenge bereit. Beim Senden erhaelt nur dein lokales Modell die Inhalte.' : 'Anhaenge bereit. Beim Senden erhaelt dein KI-Anbieter die Inhalte.'));
   } catch (error) { notice(error.message); }
   finally { uploading = false; $('#attach').textContent = '＋ Dateien'; setBusy(false); renderFiles(); $('#files').value = ''; }
 }
@@ -192,9 +212,17 @@ async function openPreview(html) {
     $('#preview-frame').src = data.url; $('#preview').showModal();
   } catch (error) { notice(error.message); }
 }
-$('#continue').addEventListener('click', () => {
-  $('#prompt').value = 'Die Antwort wurde abgeschnitten. Gib angefangene Dateien vollstaendig neu aus, mit der exakten Kopfzeile filename=pfad/datei im Codeblock. Nicht nur den Rest anfuegen; keine Code-Fragmente. Danach liefere weitere noch fehlende Dateien jeweils komplett. Bereits fertige Dateien musst du nicht wiederholen.' + (unfinishedFiles.size ? ' Noch unvollstaendig: ' + [...unfinishedFiles].join(', ') : '');
-  $('#chat-form').requestSubmit();
+function continuationPrompt() {
+  return 'Die Antwort ist noch unvollstaendig. Gib angefangene Dateien komplett neu aus, mit filename=pfad/datei in der Kopfzeile. Keine losen Code-Fragmente. Danach weitere fehlende Dateien vollstaendig ausgeben. Bereits fertige Dateien nicht wiederholen.' + (unfinishedFiles.size ? ' Offene Dateien: ' + [...unfinishedFiles].join(', ') : ' Setze ansonsten die Erklaerung am letzten vollstaendigen Absatz fort.');
+}
+$('#continue').addEventListener('click', () => { $('#prompt').value = continuationPrompt(); $('#chat-form').requestSubmit(); });
+$('#auto-continue').addEventListener('change', () => { if (!$('#auto-continue').checked) { stopAutomatic(); if (!busy) $('#stop').hidden = true; } });
+$('#source').addEventListener('change', () => {
+  stopAutomatic();
+  if ($('#source').value === 'local' && $('#mode').value === 'image') $('#mode').value = 'chat';
+  $('#mode').querySelector('option[value="image"]').disabled = $('#source').value === 'local';
+  $('#mode').dispatchEvent(new Event('change'));
+  refresh();
 });
 $('#close-preview').addEventListener('click', () => { $('#preview').close(); $('#preview-frame').removeAttribute('src'); });
 async function generateImage(prompt) {
@@ -204,7 +232,7 @@ async function generateImage(prompt) {
   addMessage('user', prompt); const output = addMessage('assistant', 'Bild wird angefragt …'); controller = new AbortController(); scroll();
   try {
     output.article.querySelectorAll('.byline .copy').forEach(button => button.remove());
-    const data = await api('/api/images', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }), signal: controller.signal });
+    const data = await api('/api/images', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, source: $('#source').value }), signal: controller.signal });
     output.text.replaceChildren(); const image = document.createElement('img'); image.src = data.image; image.alt = prompt; image.className = 'generated-image';
     const download = document.createElement('button'); download.type = 'button'; download.className = 'primary'; download.textContent = '↓ Bild herunterladen';
     download.onclick = () => { const a = document.createElement('a'); a.href = data.image; a.download = 'KI-Bild.png'; a.click(); };

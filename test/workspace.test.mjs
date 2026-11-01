@@ -23,7 +23,7 @@ async function fixture(t) {
   const base = await listen(server); const page = await fetch(base); await page.text();
   const headers = { Cookie: page.headers.get('set-cookie').split(';')[0], Origin: base, 'Content-Type': 'application/json' };
   t.after(async () => { for (const s of [server, gateway]) { s.closeAllConnections(); await new Promise(r => s.close(r)); } });
-  return { base, headers, sent, mode: mode => { reply = mode; }, post: (url, data) => fetch(base + url, { method: 'POST', headers, body: JSON.stringify(data) }) };
+  return { base, headers, sent, mode: mode => { reply = mode; }, post: (url, data) => fetch(base + url, { method: 'POST', headers, body: JSON.stringify({ source: 'gateway', ...data }) }) };
 }
 test('version handshake reports the actual running build and supported features', async t => {
   const f = await fixture(t); const response = await fetch(f.base + '/healthz');

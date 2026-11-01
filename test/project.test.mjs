@@ -60,7 +60,7 @@ test('archive upload can be downloaded with all originals, without forwarding pr
   const uploaded = await fetch(base + '/api/attachments', { method: 'POST', headers, body: form }).then(r => r.json());
   const attachment = uploaded.attachments[0]; assert.equal(attachment.project.files.length, 3); assert.ok(!JSON.stringify(uploaded).includes('PRIVATE-UPLOAD-CONTENT'));
   const jsonHeaders = { ...headers, 'Content-Type': 'application/json' };
-  await (await fetch(base + '/api/chat', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ model: 'auto', messages: [{ role: 'user', content: 'Verbessern', attachments: [attachment.id] }] }) })).text();
+  await (await fetch(base + '/api/chat', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ source: 'gateway', model: 'auto', messages: [{ role: 'user', content: 'Verbessern', attachments: [attachment.id] }] }) })).text();
   assert.ok(!JSON.stringify(sent).includes('PRIVATE-UPLOAD-CONTENT')); assert.match(JSON.stringify(sent), /bot\/.env/);
   const response = await fetch(base + '/api/project-zip', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ attachmentId: attachment.id, files: [{ name: 'bot.py', content: 'print("updated")', explicit: true }] }) });
   assert.equal(response.status, 200); assert.equal(response.headers.get('content-type'), 'application/zip'); assert.equal(response.headers.get('x-neu-original-files'), '3');

@@ -1,11 +1,11 @@
-param([switch]$Claude)
+param([switch]$Claude, [switch]$GatewayOnly)
 $ErrorActionPreference = 'Stop'
 try {
     . (Join-Path $PSScriptRoot 'Background.ps1')
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node.js fehlt. Bitte zuerst Node.js 22 installieren und das Fenster neu oeffnen.' }
     $major = [int]((& node --version) -replace '^v(\d+).*$', '$1')
     if ($major -lt 22 -or $major -ge 25) { throw 'Bitte Node.js 22 oder 24 verwenden.' }
-    if (-not $Claude) {
+    if (-not $Claude -and -not $GatewayOnly) {
         $lockHash = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'package-lock.json') -Algorithm SHA256).Hash
         $stampFile = Join-Path $PSScriptRoot 'node_modules\.neu-lock-hash'
         $installedHash = if (Test-Path -LiteralPath $stampFile) { (Get-Content -Raw -LiteralPath $stampFile).Trim() } else { '' }
@@ -23,7 +23,7 @@ try {
     function Test-Gateway {
         try { return ((Invoke-RestMethod 'http://127.0.0.1:3001/livez' -TimeoutSec 2).status -eq 'ok') } catch { return $false }
     }
-    if (-not (Test-Gateway)) {
+    if (($Claude -or $GatewayOnly) -and -not (Test-Gateway)) {
         $server = Join-Path $gatewayRoot 'server\dist\index.js'
         if (-not (Test-Path $server)) { throw "FreeLLMAPI fehlt unter $gatewayRoot. Bitte die vorhandene Installation dorthin legen oder gatewayRoot in Start.ps1 anpassen." }
         Write-Host 'Starte FreeLLMAPI ...'
@@ -31,6 +31,7 @@ try {
         for ($i = 0; $i -lt 30 -and -not (Test-Gateway); $i++) { Start-Sleep -Milliseconds 500 }
         if (-not (Test-Gateway)) { throw 'FreeLLMAPI startet nicht. Protokolle unter %LOCALAPPDATA%\NeuChat\logs pruefen.' }
     }
+    if ($GatewayOnly) { Write-Host 'FreeLLMAPI bereit. Im Browser bewusst FreeLLMAPI waehlen; Anbietertarife gelten.'; exit 0 }
     if ($Claude) {
         if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { throw 'Claude Code fehlt. Installieren mit: npm.cmd install -g @anthropic-ai/claude-code@2.1.316' }
         $projects = Join-Path $env:USERPROFILE 'Claude-Projekte'

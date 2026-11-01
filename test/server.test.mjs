@@ -37,7 +37,7 @@ async function fixture(t, options = {}) {
 
 test('authenticated browser can list configured models without receiving credentials', async t => {
   const f = await fixture(t);
-  const res = await fetch(f.base + '/api/status', { headers: f.headers });
+  const res = await fetch(f.base + '/api/status?source=gateway', { headers: f.headers });
   const text = await res.text(); const data = JSON.parse(text);
   assert.equal(res.status, 200); assert.equal(data.ready, true);
   assert.deepEqual(data.models.map(m => m.id), ['auto', 'gemini-test']);
@@ -46,24 +46,24 @@ test('authenticated browser can list configured models without receiving credent
 test('real HTTP streaming preserves history, Unicode and auto routing', async t => {
   const f = await fixture(t);
   const messages = [{ role: 'user', content: 'Erste Frage' }, { role: 'assistant', content: 'Erste Antwort' }, { role: 'user', content: 'Grüße 🌱' }];
-  const res = await fetch(f.base + '/api/chat', { method: 'POST', headers: f.headers, body: JSON.stringify({ model: 'auto', messages }) });
+  const res = await fetch(f.base + '/api/chat', { method: 'POST', headers: f.headers, body: JSON.stringify({ source: 'gateway', model: 'auto', messages }) });
   assert.equal(res.status, 200); assert.match(res.headers.get('content-type'), /event-stream/);
   const text = await res.text(); assert.match(text, /Hallo 🌱/); assert.match(text, /\[DONE\]/);
   assert.deepEqual(f.received[0].messages.slice(1), messages); assert.equal(f.received[0].model, 'auto'); assert.equal(f.received[0].stream, true);
 });
 test('missing session, foreign origins and DNS-rebinding hosts cannot use the gateway', async t => {
-  const f = await fixture(t); const payload = JSON.stringify({ model: 'auto', messages: [{ role: 'user', content: 'x' }] });
-  const noSession = await fetch(f.base + '/api/status'); assert.equal(noSession.status, 403);
+  const f = await fixture(t); const payload = JSON.stringify({ source: 'gateway', model: 'auto', messages: [{ role: 'user', content: 'x' }] });
+  const noSession = await fetch(f.base + '/api/status?source=gateway'); assert.equal(noSession.status, 403);
   const foreign = await fetch(f.base + '/api/chat', { method: 'POST', headers: { ...f.headers, Origin: 'https://evil.example' }, body: payload }); assert.equal(foreign.status, 403);
   // Node fetch normalizes Host; use a raw HTTP client to exercise the actual check.
-  const badHost = await new Promise(resolve => { http.get(f.base + '/api/status', { headers: { ...f.headers, Host: 'evil.example' } }, res => { res.resume(); resolve(res.statusCode); }); }); assert.equal(badHost, 403);
+  const badHost = await new Promise(resolve => { http.get(f.base + '/api/status?source=gateway', { headers: { ...f.headers, Host: 'evil.example' } }, res => { res.resume(); resolve(res.statusCode); }); }); assert.equal(badHost, 403);
   assert.equal(f.received.length, 0);
 });
 test('provider quota and unavailable errors remain distinct and redact upstream details', async t => {
   const f = await fixture(t);
   for (const code of [429, 503, 401]) {
     f.setMode(String(code));
-    const res = await fetch(f.base + '/api/chat', { method: 'POST', headers: f.headers, body: JSON.stringify({ model: 'auto', messages: [{ role: 'user', content: 'Test' }] }) });
+    const res = await fetch(f.base + '/api/chat', { method: 'POST', headers: f.headers, body: JSON.stringify({ source: 'gateway', model: 'auto', messages: [{ role: 'user', content: 'Test' }] }) });
     assert.equal(res.status, code); const text = await res.text(); assert.ok(!text.includes('PRIVATE-UPSTREAM-DETAIL')); assert.ok(JSON.parse(text).error);
   }
 });
@@ -77,19 +77,19 @@ test('rejects malformed history and prevents browser-supplied system instruction
 });
 test('first connection verifies the key, persists locally and survives restart without exposing it', async t => {
   const f = await fixture(t, { apiKey: '' });
-  const status = await fetch(f.base + '/api/status', { headers: f.headers }).then(r => r.json()); assert.equal(status.configured, false);
+  const status = await fetch(f.base + '/api/status?source=gateway', { headers: f.headers }).then(r => r.json()); assert.equal(status.configured, false);
   const bad = await fetch(f.base + '/api/connection', { method: 'POST', headers: f.headers, body: JSON.stringify({ key: 'wrong-key-value' }) }); assert.equal(bad.status, 401);
   await assert.rejects(fs.readFile(f.configFile));
   const good = await fetch(f.base + '/api/connection', { method: 'POST', headers: f.headers, body: JSON.stringify({ key: 'test-gateway-secret' }) }); assert.equal(good.status, 200); assert.deepEqual(await good.json(), { configured: true });
   assert.equal(JSON.parse(await fs.readFile(f.configFile, 'utf8')).key, 'test-gateway-secret');
   if (process.platform !== 'win32') assert.equal((await fs.stat(f.configFile)).mode & 0o777, 0o600);
-  const configured = await fetch(f.base + '/api/status', { headers: f.headers }).then(r => r.json()); assert.equal(configured.configured, true);
+  const configured = await fetch(f.base + '/api/status?source=gateway', { headers: f.headers }).then(r => r.json()); assert.equal(configured.configured, true);
   const restarted = createChatServer({ gateway: f.gateway, configFile: f.configFile });
   const base = await listen(restarted);
   t.after(async () => { restarted.closeAllConnections(); await new Promise(r => restarted.close(r)); });
   const page = await fetch(base); await page.text();
   const cookie = page.headers.get('set-cookie').split(';')[0];
-  const restored = await fetch(base + '/api/status', { headers: { Cookie: cookie } }).then(r => r.json());
+  const restored = await fetch(base + '/api/status?source=gateway', { headers: { Cookie: cookie } }).then(r => r.json());
   assert.equal(restored.configured, true); assert.equal(restored.ready, true);
 });
 test('serves CSP-protected UI and refuses paths outside the static asset list', async t => {

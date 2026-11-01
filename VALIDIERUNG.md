@@ -37,3 +37,10 @@
 - Browser-Test ueber mehrere Antworten: erste Code-Dateien blieben erhalten, eine spaetere CSS-Aenderung ersetzte die vorherige, das hochgeladene Original-Binaerfile blieb bytegenau gleich, ein unvollstaendiger Codeblock wurde nicht exportiert. ZIP-Download und entpackte Inhalte wurden geprueft.
 - Nicht gelesene private Konfigurationsinhalte wurden beim Test im Export erhalten, aber nicht an den simulierten KI-Gateway weitergegeben. Testdaten sind kuenstlich.
 - Der konkrete USHERO-Bot wurde nicht als fertig oder getestet bestaetigt: In diesem Auftrag lag sein Chat-Verlauf vor, nicht das Originalprojekt als ZIP. Die Anwendung stellt den technischen Export bereit; sie kann fehlende oder falsche KI-Implementierungen nicht durch Verpacken korrigieren.
+
+## Lokaler Standard und Fortsetzung, Version 1.4.0
+
+- 26 Integrationstests bestanden. Neu: Lokaler Standard ohne Weitergabe von Anbieter-Schluesseln, keine Gateway-Aufrufe bei fehlendem lokalem Modell, Sperre von Cloud-Aliasen und Bildanbieter-Aufrufen im lokalen Modus.
+- Browser-Test prueft zusaetzlich automatische Folgeantwort, Stopp bei Anbieterfehler, expliziten Abbruch und maximal drei automatische Fortsetzungen. Die Gateway-Tests waehlen ihren externen Modus ausdruecklich.
+- Es ist kein echter Ollama-Dienst oder heruntergeladenes lokales Modell in dieser Umgebung installiert. Lokale Antwortlogik ist gegen einen simulierten Dienst geprueft. Keine echte lokale Inferenz oder Windows-Installation behauptet.
+- Kostenlos-unbegrenzt mit allen Funktionen proprietaerer KI-Dienste ist nicht implementiert oder zugesichert. Lokaler Chat hat keine externen KI-API-Aufrufe; Hardware-/Kontextgrenzen bleiben. Optionaler Gateway-Betrieb unterliegt Anbieterpreisen.
