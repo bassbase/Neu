@@ -5,6 +5,22 @@ sendet seinen Datenstand nach Sheets. Zurück übernommen werden ausschließlich
 **Lagerbestand und Dienstplan**, wie vereinbart. Verkäufe, Abrechnungen, Löhne
 und andere Geldbuchungen werden weiterhin im Bot vorgenommen.
 
+## Tabelle aus Discord öffnen
+
+**`/sheets`** zeigt Leitung und Buchhaltung privat einen **Google Sheets öffnen**-
+Button. Der Bot ermittelt die richtige Tabellenadresse automatisch durch einen
+authentifizierten Statusaufruf deiner Web-App. Auch **Sheets-Status** und ein
+erfolgreicher **Sheets-Abgleich** zeigen diesen Button. In Buchhaltung gibt es
+zusätzlich **Sheets öffnen**. Ein Klick öffnet die Tabelle auf deinem Gerät;
+Discord erlaubt dem Bot nicht, selbstständig Browserfenster bei Nutzern zu öffnen.
+Die Google-Freigabe der Tabelle gilt weiterhin.
+
+Damit der neue Link verfügbar ist, das mitgelieferte `Code.gs` auch bei einem
+bestehenden V3-Deployment ersetzen und als **neue Web-App-Version** bereitstellen.
+Bei fehlendem Link oder falscher Konfiguration zeigt der Bot die Ursache. Die
+Bereitstellungs-URL ist kein Tabellenlink; Schlüssel werden nie in den Button
+eingefügt. Normale Mitarbeiter erhalten keinen Zugriff auf das Gesamt-Workbook.
+
 ## Wichtig zu deinen Links
 
 - Die URL `https://script.google.com/macros/s/…/exec` ist die Web-App-Adresse.

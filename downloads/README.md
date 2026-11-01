@@ -1,6 +1,6 @@
 # ✦ USHERO – getrennte Abteilungen und Sheets V3
 
-- [Vollständigen Bot als ZIP herunterladen](https://github.com/bassbase/Neu/raw/refs/heads/main/downloads/USHERO-Discord-Bot-Rechte-Sheets-V3.zip)
+- [Vollständigen Bot als ZIP herunterladen](https://github.com/bassbase/Neu/raw/refs/heads/main/downloads/USHERO-Discord-Bot-Sheets-Oeffnen.zip)
 - [Farbige Tabellen-Vorlage V3 herunterladen](https://github.com/bassbase/Neu/raw/refs/heads/main/downloads/USHERO-Dashboard-V3.xlsx)
 - [Sheets einrichten und bestehende Verbindung aktualisieren](SHEETS-EINRICHTEN.md)
 
@@ -34,10 +34,21 @@ Rechte werden nicht automatisch entzogen. Reguläre Mitarbeiter sollten keine
 Administratorrolle erhalten. Buchhaltung erhält Finanzfunktionen; KI bleibt
 beim Serverinhaber. Normale Mitarbeiter sehen nur ihren eigenen Dienstplan.
 
-Nur `/menu` und `/panel` bleiben als Slash-Befehle sichtbar. Alte Einträge dieses
+`/menu`, `/panel` und der neue Direktaufruf `/sheets` bleiben als Slash-Befehle sichtbar. Alte Einträge dieses
 Bots werden beim Start bereinigt. Kanalmenüs bleiben angeheftet, soweit erlaubt;
 Discord bietet keine schwebenden Menüs. Bereinigt werden neue Arbeitsnachrichten
 in registrierten Kanälen, keine alten Chatverläufe oder Buchungsdaten.
+
+## Tabelle mit /sheets öffnen
+
+`/sheets` zeigt Leitung und Buchhaltung privat einen **Google Sheets öffnen**-
+Button. Die richtige Tabellenadresse wird automatisch bei der authentifizierten
+Web-App abgefragt. Auch in Buchhaltung und nach einem bestätigten Abgleich ist
+der Button verfügbar. Ein Klick ist durch Discord erforderlich; der Bot öffnet
+keine Browserfenster auf fremden Geräten. Die Google-Freigaben gelten weiterhin.
+Für den neuen Link auch bestehendes V3-Code.gs ersetzen und die Web-App als
+neue Version bereitstellen. Der Bot erklärt fehlende Aktivierung, falsche
+Schlüssel oder ein altes Deployment ohne Tabellenlink.
 
 ## Sheets tatsächlich verbinden
 
@@ -66,7 +77,7 @@ keinen Zugriff durch Personen, die das gesamte Workbook lesen dürfen.
 
 ## Prüfung und Grenzen
 
-**49 Offline-Tests aus der fertig entpackten ZIP bestanden**, einschließlich
+**52 Offline-Tests aus der fertig entpackten ZIP bestanden**, einschließlich
 echter Discord-Rechteberechnung, SQLite-Transaktionen, Importbestätigung,
 Konfliktbehandlung, Apps-Script-Simulation und XLSX-Design. Die lokale Datenbank
 bleibt die Buchungsbasis. Die Cloud-Netzwerkrichtlinie erlaubt keinen Zugriff
