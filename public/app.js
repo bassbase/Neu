@@ -1,6 +1,6 @@
 import { renderAnswer, saveFile } from './workspace.js';
 const $ = selector => document.querySelector(selector);
-const CLIENT_VERSION = '1.2.0';
+const CLIENT_VERSION = '1.3.0';
 const messages = [];
 let busy = false;
 let controller;
@@ -9,6 +9,10 @@ let serverCurrent = false;
 let pendingFiles = [];
 let uploading = false;
 const allFiles = new Set();
+const projectFiles = new Map();
+const projectBases = new Map();
+const unfinishedFiles = new Set();
+let exporting = false;
 const dialog = $('#settings');
 function notice(text) { $('#notice').textContent = text; $('#notice').hidden = !text; }
 async function api(path, options) {
@@ -65,7 +69,7 @@ function addMessage(role, content) {
 }
 function scroll() { $('#conversation').scrollTop = $('#conversation').scrollHeight; }
 function setBusy(value) {
-  busy = value; $('#send').disabled = value || uploading; $('#stop').hidden = !value; $('#model').disabled = value || $('#mode').value === 'image'; $('#mode').disabled = value; $('#new-chat').disabled = value || uploading; $('#attach').disabled = value || uploading;
+  busy = value; $('#send').disabled = value || uploading; $('#stop').hidden = !value; $('#model').disabled = value || $('#mode').value === 'image'; $('#mode').disabled = value; $('#new-chat').disabled = value || uploading; $('#attach').disabled = value || uploading; renderProject();
 }
 async function send(event) {
   event.preventDefault();
@@ -111,10 +115,10 @@ async function send(event) {
     }
     buffer += decoder.decode(); if (buffer.trim()) await line(buffer);
     if (!done || !answer) throw new Error('Die Antwort wurde nicht vollständig übertragen. Bitte erneut versuchen.');
-    output.setContent(answer); renderAnswer(output.text, answer, openPreview);
+    output.setContent(answer); renderAnswer(output.text, answer, openPreview, { collect: collectProject, export: exportProject });
     messages.push(current, { role: 'assistant', content: answer });
-    $('#continue').hidden = !truncated;
-    if (truncated) notice('Das Antwortlimit wurde erreicht. Mit Fortsetzen kannst du die fehlenden Teile anfordern.');
+    $('#continue').hidden = !(truncated || unfinishedFiles.size);
+    if (truncated || unfinishedFiles.size) notice('Die Antwort oder eine Datei ist noch unvollstaendig. Mit Fortsetzen werden angefangene Dateien komplett neu angefordert; abgeschnittene Teile werden nicht als fertige Dateien exportiert.');
   } catch (error) {
     output.text.textContent = answer || (error.name === 'AbortError' ? 'Antwort gestoppt.' : 'Keine Antwort erhalten.');
     output.setContent(answer || output.text.textContent);
@@ -130,7 +134,7 @@ $('#prompt').addEventListener('input', () => { $('#prompt').style.height = 'auto
 $('#save-chat').addEventListener('click', () => { if (!messages.length) return notice('Noch kein Chat zum Exportieren.'); saveFile('Neu-Chat.md', messages.map(m => `## ${m.role === 'user' ? 'Du' : 'Neu'}\n\n${m.content}`).join('\n\n')); });
 $('#new-chat').addEventListener('click', () => {
   for (const id of allFiles) fetch('/api/attachments/' + id, { method: 'DELETE' }).catch(() => {});
-  allFiles.clear(); pendingFiles = []; renderFiles(); messages.length = 0; $('#continue').hidden = true;
+  allFiles.clear(); projectFiles.clear(); projectBases.clear(); unfinishedFiles.clear(); renderProject(); pendingFiles = []; renderFiles(); messages.length = 0; $('#continue').hidden = true;
   $('#messages').replaceChildren(); $('#welcome').hidden = false; $('#prompt').value = ''; notice(''); $('#prompt').focus();
 });
 $('#connection').addEventListener('click', () => dialog.showModal());
@@ -154,6 +158,7 @@ function renderFiles() {
     const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label', `${file.name} entfernen`); remove.disabled = busy || uploading;
     remove.addEventListener('click', async () => {
       pendingFiles = pendingFiles.filter(f => f.id !== file.id); allFiles.delete(file.id); renderFiles();
+      projectBases.delete(file.id); renderProject();
       await fetch('/api/attachments/' + file.id, { method: 'DELETE' }).catch(() => {});
     });
     chip.append(label, remove, detail); $('#attachments').append(chip);
@@ -170,7 +175,8 @@ async function upload(files) {
   try {
     const data = new FormData(); for (const file of files) data.append('files', file);
     const response = await api('/api/attachments', { method: 'POST', body: data });
-    for (const file of response.attachments) { pendingFiles.push(file); allFiles.add(file.id); }
+    for (const file of response.attachments) { pendingFiles.push(file); allFiles.add(file.id); if (file.project) projectBases.set(file.id, file); }
+    renderProject(true);
     notice(response.errors.length ? response.errors.map(f => `${f.name}: ${f.error}`).join('\n') : 'Anhänge bereit. Beim Senden werden gelesener Text und ggf. Bilder an deinen KI-Anbieter übertragen.');
   } catch (error) { notice(error.message); }
   finally { uploading = false; $('#attach').textContent = '＋ Dateien'; setBusy(false); renderFiles(); $('#files').value = ''; }
@@ -186,7 +192,10 @@ async function openPreview(html) {
     $('#preview-frame').src = data.url; $('#preview').showModal();
   } catch (error) { notice(error.message); }
 }
-$('#continue').addEventListener('click', () => { $('#prompt').value = 'Fahre mit der zuletzt begonnenen Antwort fort. Vervollstaendige fehlende Dateien oder Codeabschnitte, ohne den fertigen Teil zu wiederholen.'; $('#chat-form').requestSubmit(); });
+$('#continue').addEventListener('click', () => {
+  $('#prompt').value = 'Die Antwort wurde abgeschnitten. Gib angefangene Dateien vollstaendig neu aus, mit der exakten Kopfzeile filename=pfad/datei im Codeblock. Nicht nur den Rest anfuegen; keine Code-Fragmente. Danach liefere weitere noch fehlende Dateien jeweils komplett. Bereits fertige Dateien musst du nicht wiederholen.' + (unfinishedFiles.size ? ' Noch unvollstaendig: ' + [...unfinishedFiles].join(', ') : '');
+  $('#chat-form').requestSubmit();
+});
 $('#close-preview').addEventListener('click', () => { $('#preview').close(); $('#preview-frame').removeAttribute('src'); });
 async function generateImage(prompt) {
   if (!prompt) { notice('Bitte beschreibe das gewuenschte Bild.'); return; }
@@ -207,4 +216,43 @@ $('#mode').addEventListener('change', () => {
   const image = $('#mode').value === 'image'; $('#continue').hidden = true; $('#model').disabled = image; $('#mode-hint').textContent = image ? 'Bildmodell erforderlich · Tarif deines Bildanbieters gilt. Keine Bildbearbeitung.' : $('#mode').value === 'code' ? 'Vollstaendige Dateien, Projekt-ZIP und isolierte HTML-Vorschau.' : 'Fragen, Schreiben, Dateien und Bildanalyse.';
   $('#prompt').placeholder = image ? 'Beschreibe das Bild, das du erstellen moechtest …' : 'Frag, was dich weiterbringt …';
 });
+function collectProject(parsed) {
+  const problems = [...parsed.errors];
+  for (const file of parsed.files) {
+    if ($('#project-base').value && !file.explicit) { problems.push(`${file.name}: kein eindeutiger Dateipfad; nicht als Änderung übernommen.`); continue; }
+    const key = file.name.toLowerCase(); projectFiles.delete(key); projectFiles.set(key, { name: file.name, content: file.content, explicit: file.explicit }); unfinishedFiles.delete(file.name);
+  }
+  for (const name of parsed.unfinished) unfinishedFiles.add(name);
+  renderProject();
+  if (problems.length) notice(problems.join('\n'));
+}
+function renderProject(autoSelect = false) {
+  const previous = $('#project-base').value;
+  $('#project-base').replaceChildren(new Option('Neues Projekt · erzeugte Dateien', ''));
+  for (const [id, file] of projectBases) $('#project-base').add(new Option(`${file.name} · ${file.project.files.length} Originaldateien`, id));
+  if (projectBases.has(previous)) $('#project-base').value = previous;
+  else if (autoSelect === true && !previous && projectBases.size === 1) $('#project-base').value = projectBases.keys().next().value;
+  const base = projectBases.get($('#project-base').value);
+  const eligible = [...projectFiles.values()].filter(file => !base || file.explicit);
+  $('#project-export').disabled = exporting || busy || uploading || (!base && !projectFiles.size);
+  $('#project-info').textContent = `${base ? base.project.files.length + ' Originaldateien + ' : ''}${eligible.length} vollständige Dateiversionen` + (unfinishedFiles.size ? ` · ${unfinishedFiles.size} abgeschnittene Dateien nicht übernommen` : '') + (!eligible.length && base ? ' · Export noch ohne Änderungen' : '');
+}
+$('#project-base').addEventListener('change', renderProject);
+$('#project-export').addEventListener('click', exportProject);
+async function exportProject() {
+  if (exporting || busy || uploading) return;
+  exporting = true; renderProject();
+  try {
+    const attachmentId = $('#project-base').value;
+    const files = [...projectFiles.values()].filter(file => !attachmentId || file.explicit);
+    const response = await fetch('/api/project-zip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ attachmentId: attachmentId || undefined, files }) });
+    if (!response.ok) throw new Error((await response.json()).error ?? 'ZIP konnte nicht erstellt werden.');
+    const base = projectBases.get(attachmentId);
+    saveFile(base ? base.name.replace(/\.(zip|rar)$/i, '') + '-bearbeitet.zip' : 'KI-Projekt.zip', await response.blob(), 'application/zip');
+    const original = response.headers.get('X-Neu-Original-Files');
+    notice(`ZIP-Download gestartet: ${original} Originaldateien vollständig erhalten, dazu die gesammelten vollständigen Änderungen. Nicht gelesene Dateien bleiben unverändert. Das Paket wurde nicht automatisch ausgeführt oder funktional getestet.` + (unfinishedFiles.size ? ' Abgeschnittene Dateien sind nicht als Änderung enthalten; bitte Fortsetzen verwenden.' : ''));
+  } catch (error) { notice(error.message); }
+  finally { exporting = false; renderProject(); }
+}
+renderProject();
 await refresh();

@@ -37,7 +37,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('#send').disabled);
   assert.equal(await page.locator('.assistant pre').count(), 3);
   assert.match(lastRequest.messages[0].content, /Programmiermodus/);
-  const download = page.waitForEvent('download'); await page.getByText('↓ Projekt als ZIP', { exact: true }).click();
+  const download = page.waitForEvent('download'); await page.locator('#project-export').click();
   const zipFile = await download; await zipFile.saveAs(path.join(temp, 'project.zip'));
   const zip = await JSZip.loadAsync(await fs.readFile(path.join(temp, 'project.zip')));
   assert.ok(zip.file('index.html')); assert.match(await zip.file('app.js').async('string'), /onclick/);
@@ -49,6 +49,19 @@ try {
   answer = '<img src=x onerror="window.pwned=1"><script>window.pwned=2</script>\n**Sicherer Text**';
   await page.locator('#prompt').fill('Sicherheitstest'); await page.locator('#send').click(); await page.waitForFunction(() => !document.querySelector('#send').disabled);
   assert.equal(await page.locator('.assistant').last().locator('img,script').count(), 0); assert.equal(await page.evaluate(() => window.pwned), undefined);
+  // Across multiple responses, keep the first files and use the latest complete replacement.
+  const originalProject = new JSZip(); originalProject.file('root/index.html', '<p>Original</p>'); originalProject.file('root/data.bin', new Uint8Array([0, 255, 17]));
+  await page.locator('#files').setInputFiles({ name: 'original.zip', mimeType: 'application/zip', buffer: await originalProject.generateAsync({ type: 'nodebuffer' }) });
+  await page.waitForFunction(() => document.querySelector('#project-base').options.length === 2 && !document.querySelector('#attach').disabled);
+  answer = '```css\nfilename=style.css\nbody { color: green; }\n```\n```python filename=unfinished.py\nclass NotFinished:';
+  await page.locator('#prompt').fill('Weitere Dateien'); await page.locator('#send').click(); await page.waitForFunction(() => !document.querySelector('#send').disabled);
+  assert.match(await page.locator('#project-info').textContent(), /abgeschnittene/);
+  const fullDownload = page.waitForEvent('download'); await page.locator('#project-export').click(); const fullFile = await fullDownload;
+  await fullFile.saveAs(path.join(temp, 'whole.zip')); const whole = await JSZip.loadAsync(await fs.readFile(path.join(temp, 'whole.zip')));
+  assert.deepEqual(await whole.file('root/data.bin').async('uint8array'), new Uint8Array([0, 255, 17]));
+  assert.match(await whole.file('root/style.css').async('string'), /green/);
+  assert.ok(whole.file('root/app.js')); assert.ok(!whole.file('root/unfinished.py'));
+  assert.ok(!String(await whole.file('root/style.css').async('string')).includes('filename='));
   await page.locator('#mode').selectOption('image'); await page.locator('#prompt').fill('Ein blaues Bild'); await page.locator('#send').click();
   await page.waitForFunction(() => !document.querySelector('#send').disabled); assert.equal(await page.locator('.generated-image').count(), 1);
   imageStatus = 503; await page.locator('#prompt').fill('Ein weiteres Bild'); await page.locator('#send').click(); await page.waitForFunction(() => !document.querySelector('#send').disabled); assert.match(await page.locator('#notice').textContent(), /Bildmodell/);

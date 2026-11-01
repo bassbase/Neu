@@ -25,6 +25,22 @@ Ab Version 1.2 prueft `Start.cmd` den Build ueber `/healthz`. Ein veralteter, vo
 
 ## Chat, fertige Code-Projekte und Bilder
 
+### Ein vollstaendiges bearbeitetes Projekt als ZIP
+
+1. Das Original-ZIP oder RAR ueber „Dateien“ hochladen. Es erscheint oben als **Projektbasis** mit der Zahl der Originaldateien.
+2. Die gewuenschten Verbesserungen anfordern. Die App sammelt vollstaendige geaenderte Dateien auch ueber mehrere KI-Antworten hinweg.
+3. Oben oder unter einer Code-Antwort **„Ganzes Projekt als ZIP“** anklicken. Der Browser startet einen echten ZIP-Download. Im Download-Ordner liegt `<Originalname>-bearbeitet.zip`.
+
+Das Paket enthaelt alle akzeptierten Originaldateien einschliesslich nicht von der KI gelesener Dateien, Binaerdateien und leerer Ordner. Nur eindeutig benannte, vollstaendige Codebloecke ersetzen Dateien; die neueste vollstaendige Version gewinnt. Fehlende neue Dateien werden ergaenzt. Originaldateien werden nicht automatisch geloescht. Mehrdeutige Pfade werden abgelehnt. Bei mehreren Archiven die richtige Projektbasis oben auswaehlen. Fuer ein ganz neues Projekt die Basis „Neues Projekt“ verwenden.
+
+Erkannt werden `python filename=cogs/menu.py` im Kopf des Codeblocks, eine unzitierte erste Metadatenzeile `filename=cogs/menu.py` im Codeblock und ein eindeutiger Pfadkommentar wie `# cogs/menu.py`. Eine Metadatenzeile wird nicht in den heruntergeladenen Python-Code geschrieben. Ein Verzeichnisbaum als Text wird nicht als Programmdatei gepackt. Relative Pfade werden nur bei eindeutigem Treffer vorhandenen Originaldateien zugeordnet.
+
+Abgeschnittene Codebloecke sind keine fertigen Dateien und werden nicht uebernommen. Die Anzeige nennt offene Dateien; **„Antwort fortsetzen“** fordert sie vollstaendig neu an. Nur lose Restzeilen ohne vollstaendigen Codeblock werden nicht an vorhandenen Code angehaengt. So bleiben Einrueckungen und zuvor fertige Dateien erhalten.
+
+Jede ZIP enthaelt einen `NEU-PROJEKTBERICHT.json` mit unveraenderten, ersetzten und neuen Dateipfaden. Der Bericht sagt ausdruecklich, dass der Code nicht automatisch ausgefuehrt oder funktional getestet wurde. Eine vollstaendige ZIP-Struktur bedeutet nicht automatisch, dass der Bot inhaltlich fertig oder fehlerfrei ist. Ohne neue Code-Dateien ist der Export noch eine Kopie des Originals; die Oberflaeche zeigt das an.
+
+Originaldateien bleiben nur im lokalen Arbeitsspeicher bis zum bisherigen Anhang-Ablauf (30 Minuten, Bereinigung im Minutentakt) oder „Neuer Chat“. Nach Server-Neustart oder Ablauf das Originalarchiv erneut hochladen und als Basis auswaehlen. Es wird dann kein unvollstaendiger Ersatz ohne Originaldateien ausgeliefert. Der ZIP-Export ist auf 100 Aenderungsdateien und 600.000 Byte Aenderungstext begrenzt; Upload-/Archivgrenzen gelten weiterhin. Aufgenommene Rohdateien werden nicht pauschal an die KI uebertragen.
+
 Oben stehen drei Arbeitsmodi zur Auswahl:
 
 - **Chat:** Schreiben, Fragen und Anhaenge analysieren. Antworten erscheinen als bereinigtes Markdown mit Tabellen und Codebloecken. „Chat exportieren“ speichert den Textverlauf als Markdown; Dateiinhalte und erzeugte Bilddaten werden nicht in diesen Export eingebettet.

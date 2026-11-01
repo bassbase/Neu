@@ -30,3 +30,10 @@
 - Die Bildgeneration wurde mit simulierten Antworten getestet. Die ausgelesenen Cloud-Gateway-Metadaten enthielten kein aktiviertes Bildmodell mit verbundenem Anbieter. Deshalb wurde keine echte Bild-Erzeugung als erfolgreich behauptet oder ohne bekannten Tarif aufgerufen.
 - Installation aus dem Lockfile mit `npm ci` und Paketpruefung erfolgreich; keine gemeldeten Schwachstellen zum Pruefzeitpunkt.
 - Die neue Windows-Versionspruefung wurde hier nicht auf einem Windows-System ausgefuehrt. Der beobachtete Upload-404 passt zu einem alten Hintergrundserver; der konkrete Prozess auf dem PC des Nutzers war nicht direkt zugaenglich.
+
+## Vollstaendiger ZIP-Export, Version 1.3.0
+
+- 23 Tests bestanden: neu sind Dateinamen im Codeblock, Erhalt von Python-Einrueckungen, Ausschluss abgeschnittener Dateien und Verzeichnisbaeume, komplette Projekt-ZIPs mit Original-Binaerdateien/Konfiguration/leeren Ordnern, neueste vollstaendige Dateiversion, Ablehnung mehrdeutiger Pfade und echter Upload-zu-ZIP-Download.
+- Browser-Test ueber mehrere Antworten: erste Code-Dateien blieben erhalten, eine spaetere CSS-Aenderung ersetzte die vorherige, das hochgeladene Original-Binaerfile blieb bytegenau gleich, ein unvollstaendiger Codeblock wurde nicht exportiert. ZIP-Download und entpackte Inhalte wurden geprueft.
+- Nicht gelesene private Konfigurationsinhalte wurden beim Test im Export erhalten, aber nicht an den simulierten KI-Gateway weitergegeben. Testdaten sind kuenstlich.
+- Der konkrete USHERO-Bot wurde nicht als fertig oder getestet bestaetigt: In diesem Auftrag lag sein Chat-Verlauf vor, nicht das Originalprojekt als ZIP. Die Anwendung stellt den technischen Export bereit; sie kann fehlende oder falsche KI-Implementierungen nicht durch Verpacken korrigieren.

@@ -32,7 +32,7 @@ async function zipEntries(data) {
         if (++count > 60 || (total += entry.uncompressedSize) > MAX_EXPANDED || entry.uncompressedSize > MAX_EXPANDED) return fail('Archiv zu gross: maximal 60 Eintraege und 15 MB entpackter Inhalt.');
         if (!safeName(entry.fileName) || (entry.externalFileAttributes >>> 16 & 0xf000) === 0xa000) return fail('Archiv mit Verknuepfungen oder unzulaessigen Pfaden wird nicht geoeffnet.');
         if (entry.generalPurposeBitFlag & 1) return fail('Passwortgeschuetzte Archive werden nicht unterstuetzt.');
-        if (entry.fileName.endsWith('/')) return zip.readEntry();
+        if (entry.fileName.endsWith('/')) { entries.push({ name: entry.fileName, data: Buffer.alloc(0), directory: true }); return zip.readEntry(); }
         zip.openReadStream(entry, (err, stream) => {
           if (err) return fail('ZIP-Eintrag kann nicht gelesen werden.');
           const chunks = []; let actual = 0;
@@ -55,7 +55,7 @@ async function rarEntries(data) {
     if (!safeName(header.name) || header.flags.encrypted) throw new Error('RAR enthaelt unzulaessige Pfade oder verschluesselte Dateien.');
     headers.push(header);
   }
-  const entries = []; let actual = 0;
+  const entries = headers.filter(h => h.flags.directory).map(h => ({ name: h.name.replace(/\/$/, '') + '/', data: Buffer.alloc(0), directory: true })); let actual = 0;
   for (const item of extractor.extract().files) if (item.extraction) {
     actual += item.extraction.length;
     if (actual > MAX_EXPANDED || item.extraction.length > item.fileHeader.unpSize) throw new Error('RAR ueberschreitet die Entpackgrenze.');
@@ -102,8 +102,10 @@ async function inspect(name, data, directory, inArchive = false) {
     if (!result.text.trim()) throw new Error('Dieses DOCX enthaelt keinen lesbaren Text.');
   } else if ((ext === '.zip' || ext === '.rar') && !inArchive) {
     const entries = ext === '.zip' ? await zipEntries(data) : await rarEntries(data);
+    result.project = { entries: entries.map(entry => ({ name: entry.name.replace(/\\/g, '/'), data: entry.data.toString('base64'), directory: Boolean(entry.directory) })) };
     const skipped = []; let value = ''; let processed = 0;
     for (const entry of entries) {
+      if (entry.directory) continue;
       const type = path.extname(entry.name).toLowerCase();
       if (processed >= 20 || value.length >= 40000 || ![...TEXT, ...IMAGES, '.pdf', '.docx'].includes(type) || (IMAGES.has(type) && result.images.length >= 6)) { skipped.push(entry.name); continue; }
       try {
@@ -115,7 +117,7 @@ async function inspect(name, data, directory, inArchive = false) {
     }
     if (!processed) throw new Error('Archiv enthaelt keine lesbaren Textdateien, Dokumente oder Bilder. Verschachtelte Archive und Programme werden nicht analysiert.');
     const shortened = trim(value); result.text = shortened.text; result.truncated ||= shortened.truncated;
-    result.summary = `Archiv: ${processed} von ${entries.length} Dateien gelesen, ${result.images.length} Bilder`;
+    result.summary = `Archiv: ${processed} von ${entries.filter(entry => !entry.directory).length} Dateien gelesen, ${result.images.length} Bilder`;
     if (skipped.length) result.warnings.push('Nicht gelesen: ' + skipped.join(', ').slice(0, 1200));
   } else if (VIDEO.has(ext) && !inArchive) {
     const input = path.join(directory, 'video' + ext); await fs.writeFile(input, data);
