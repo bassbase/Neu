@@ -15,13 +15,29 @@ Voraussetzungen: Node.js 22 oder 24 und deine bereits eingerichtete FreeLLMAPI-I
 
 Zum Beenden der durch diesen Starter gestarteten Dienste `Stop.cmd` doppelt anklicken. Der Starter merkt sich Prozess-ID, Startzeit und Skriptpfad und beendet keine fremden oder manuell gestarteten Dienste. Das Schliessen des Chat-Browserfensters beendet die Hintergrunddienste nicht. Beim naechsten Mal wieder `Start.cmd` oder `Claude.cmd` starten. Kein Administratorzugang erforderlich. Windows kann bei heruntergeladenen Skripten eine Sicherheitsrueckfrage anzeigen; pruefe die mitgelieferten lokalen Dateien vor dem Ausfuehren.
 
-**Umstieg von der bisherigen Version:** Alte manuell gestartete Server in ihren PowerShell-Fenstern zuerst mit Strg+C beenden. Danach `Start.cmd` aus dem aktualisierten Projektordner starten. Ein bereits in einem alten Fenster laufender Dienst wird wiederverwendet und kann nicht automatisch versteckt werden. Claude Code bleibt ein interaktives Terminalprogramm; fuer die Chat-Webseite benoetigst du dieses Terminal nicht.
+**Umstieg von der bisherigen Version:** Alte manuell gestartete Server in ihren PowerShell-Fenstern zuerst mit Strg+C beenden. Danach `Start.cmd` aus dem aktualisierten Projektordner starten. Ein passender Gateway wird wiederverwendet; beim Chat wird zusaetzlich die Programmversion geprueft. Claude Code bleibt ein interaktives Terminalprogramm; fuer die Chat-Webseite benoetigst du dieses Terminal nicht.
 
 Die einmal gespeicherte Chat-Verbindung bleibt unter `%LOCALAPPDATA%\NeuChat\gateway.json` erhalten. Der Browser mit dem FreeLLMAPI-Dashboard kann geschlossen werden. Laufzeit-Protokolle liegen unter `%LOCALAPPDATA%\NeuChat\logs`; sie koennen persoenliche Details enthalten und sollten nicht ungeprueft weitergegeben werden. Es wird kein Windows-Autostart eingerichtet: Nach einer Neuanmeldung einfach wieder `Start.cmd` oeffnen.
 
+## Versionspruefung und Upload-Fehler
+
+Ab Version 1.2 prueft `Start.cmd` den Build ueber `/healthz`. Ein veralteter, vom eigenen Starter registrierter Chat-Dienst wird gezielt beendet und aus dem neuen Ordner gestartet. Laeuft auf Port 3210 noch eine manuell gestartete oder fremde App, wird sie nicht ungeprueft beendet: der Starter erklaert, dass sie in ihrem eigenen Fenster mit Strg+C zu beenden ist. Danach im Browser Strg+F5 druecken. So arbeitet eine neue Webseite nicht weiter gegen einen alten Server ohne Datei-Endpunkt. Die Webseite erkennt fehlende Versionsinformationen ebenfalls und zeigt eine Update-Anleitung statt nur „Nicht gefunden“.
+
+## Chat, fertige Code-Projekte und Bilder
+
+Oben stehen drei Arbeitsmodi zur Auswahl:
+
+- **Chat:** Schreiben, Fragen und Anhaenge analysieren. Antworten erscheinen als bereinigtes Markdown mit Tabellen und Codebloecken. „Chat exportieren“ speichert den Textverlauf als Markdown; Dateiinhalte und erzeugte Bilddaten werden nicht in diesen Export eingebettet.
+- **Programmieren:** Die KI bekommt den Auftrag, mit vernuenftigen Standards direkt vollstaendige Dateien zu liefern. Jeder Codeblock bietet Kopieren und Datei-Download. Mehrere Dateien koennen als Projekt-ZIP heruntergeladen werden. Code mit Dateinamen wie `html filename=index.html` oder `javascript filename=app.js` wird erkannt. Bei einem Antwortlimit erscheint „Antwort fortsetzen“.
+- **Bild erstellen:** Sendet deine Beschreibung an den FreeLLMAPI-Endpunkt `/v1/images/generations` und zeigt ein tatsaechlich zurueckgeliefertes PNG mit Download an. Es wird ein separater aktivierter Bildanbieter mit eigenem Bildkontingent gebraucht. Unter FreeLLMAPI → Modelle → Bilder einen verfuegbaren Anbieter aktivieren. Ein funktionierender Textzugang allein belegt keine Bildgenerierungs-Freigabe. Es gilt der Tarif des Bildanbieters; kostenlose Text-Token garantieren keine kostenlosen Bilder. Fehlt ein Bildmodell, erscheint eine konkrete Fehlermeldung. Externe Bild-URLs werden nicht automatisch abgerufen.
+
+**HTML-Vorschau:** HTML-Dateien koennen direkt im Chat in einem separaten Sandbox-Frame angesehen werden. Zum Projekt passende CSS-/JS-Dateien werden fuer die Vorschau eingebunden. JavaScript kann innerhalb der Vorschau laufen, bekommt aber keinen Zugriff auf das Chat-Dokument, dessen Cookies oder Anbieter-Schluessel. Die Vorschau blockiert externe Ressourcen, Fetch-/XHR-Verbindungen, Unterframes und Formulare ueber CSP. Sie ist keine Betriebssystem-Sandbox: Node-, Python-, Shell- oder Backend-Code wird nicht ausgefuehrt. Solche Projekte kannst du herunterladen und bewusst in einer eigenen Entwicklungsumgebung starten. Externe Bibliotheken und Server-APIs sind in der Vorschau nicht verfuegbar. Die Vorschau ist nach 30 Minuten nicht mehr abrufbar.
+
+Die Modellanweisungen kennen diese bereits installierte Anwendung. Sie sollen sinnvolle Entwuerfe direkt liefern und nur bei wirklich notwendigen fehlenden Angaben nachfragen, statt wiederholt eine neue Grundinstallation vorzuschlagen. Qualitaet und Fachwissen haengen weiterhin vom verbundenen Modell ab. Die KI kann auch bei einem als fertig bezeichneten Entwurf Fehler machen; pruefe Projekte vor produktivem Einsatz.
+
 ## Dateien anhaengen und verbessern lassen
 
-Mit **„+ Dateien“**, per Drag-and-drop auf das Eingabefeld oder durch Einfuegen eines Bildes aus der Zwischenablage. Danach eine Frage oder einen Verbesserungswunsch schreiben und senden. Die App zeigt vorab an, welche Inhalte gelesen wurden. Erst beim Senden gehen diese Inhalte an den KI-Anbieter. „Speichern“ an einer Antwort laedt deren Text als TXT herunter; „Kopieren“ uebernimmt ihn in die Zwischenablage.
+Mit **„+ Dateien“**, per Drag-and-drop auf das Eingabefeld oder durch Einfuegen eines Bildes aus der Zwischenablage. Danach eine Frage oder einen Verbesserungswunsch schreiben und senden. Die App zeigt vorab an, welche Inhalte gelesen wurden. Erst beim Senden gehen diese Inhalte an den KI-Anbieter. „Speichern“ an einer Antwort laedt deren Text als Markdown-Datei herunter; „Kopieren“ uebernimmt ihn in die Zwischenablage.
 
 | Datei | Was die KI erhaelt |
 | --- | --- |
@@ -34,7 +50,7 @@ Mit **„+ Dateien“**, per Drag-and-drop auf das Eingabefeld oder durch Einfue
 
 Grenzen: maximal 5 Dateien pro Nachricht, 25 MB je Datei und 50 MB je Upload; Bilder maximal 25 Megapixel. Archive maximal 60 Eintraege und 15 MB entpackter Inhalt, keine Passwoerter oder mehrteiligen RARs. Text wird pro Datei auf 40.000 Zeichen begrenzt, mit Hinweis. Der Verlauf darf insgesamt maximal 120.000 Zeichen aus Anhaengen und 12 Bilder enthalten. Unterstuetzt ein gewaehltes Modell keine Bilder, „Automatisch“ verwenden und ein Vision-Modell in der FreeLLMAPI-Fallback-Kette aktivieren.
 
-Die KI kann Texte oder Code ueberarbeiten sowie Bilder und Videostandbilder beurteilen und Verbesserungsvorschlaege machen. Sie bearbeitet keine Originaldateien auf dem PC. Bild-Retusche, Bildgenerierung, Video-Schnitt, OCR und Audio-Transkription sind hier nicht enthalten. Unbekannte Formate, alte DOC-Dateien, Tabellen im XLS/XLSX-Format, ausfuehrbare und passwortgeschuetzte Dateien werden nicht pauschal unterstuetzt. Eine Dateiendung allein ist kein Nachweis, dass ihr Inhalt gelesen wurde.
+Die KI kann Texte oder Code ueberarbeiten sowie Bilder und Videostandbilder beurteilen und Verbesserungsvorschlaege machen. Sie bearbeitet keine Originaldateien auf dem PC. Neue Bilder sind mit eigenem Bildanbieter im Modus „Bild erstellen“ moeglich. Bild-Retusche, Video-Schnitt, OCR und Audio-Transkription sind hier nicht enthalten. Unbekannte Formate, alte DOC-Dateien, Tabellen im XLS/XLSX-Format, ausfuehrbare und passwortgeschuetzte Dateien werden nicht pauschal unterstuetzt. Eine Dateiendung allein ist kein Nachweis, dass ihr Inhalt gelesen wurde.
 
 Dateien werden in einem separaten Prozess mit Zeit- und Speichergrenzen gelesen. Archive werden in den Speicher entpackt und niemals ausgefuehrt. Rohdaten und Videostandbilder liegen waehrend der Verarbeitung in einem zufaelligen temporaeren Ordner, der danach entfernt wird. Verarbeitete Inhalte bleiben im Arbeitsspeicher des lokalen Servers fuer bis zu 30 Minuten (Bereinigung im Minutentakt), solange du sie nicht vorher entfernst oder „Neuer Chat“ waehlst. Nach Ablauf oder Server-Neustart ist ein neuer Upload erforderlich. Es wird kein Dateiarchiv auf GitHub oder im Browser-Speicher angelegt.
 
@@ -50,7 +66,7 @@ Unter „Fallback-Ketten“ geeignete Chat-Modelle aktivieren und die Reihenfolg
 
 ## Daten und Schluessel
 
-Chatverlaeufe bleiben nur im Speicher dieses Browser-Tabs. „Neuer Chat“ verwirft den Verlauf. Neuladen schliesst den Verlauf ebenfalls. Nachrichten werden zur Antworterzeugung ueber FreeLLMAPI an den ausgewaehlten Anbieter geschickt. Dieser Chat besitzt keine eigenen Werkzeuge und fuehrt KI-Antworten nicht als Code aus.
+Chatverlaeufe bleiben nur im Speicher dieses Browser-Tabs. „Neuer Chat“ verwirft den Verlauf. Neuladen schliesst den Verlauf ebenfalls. Nachrichten werden zur Antworterzeugung ueber FreeLLMAPI an den ausgewaehlten Anbieter geschickt. Die KI besitzt keinen Betriebssystemzugriff. HTML-Vorschauen koennen auf deinen Klick JavaScript im getrennten Browser-Sandbox-Frame ausfuehren.
 
 Der zentrale Gateway-Schluessel wird serverseitig unter `%LOCALAPPDATA%\NeuChat\gateway.json` gespeichert (Linux: `~/.config/NeuChat/gateway.json`). Er wird nie in einer API-Antwort ausgegeben. Die Datei enthaelt ihn im Klartext; unter Linux werden private Dateirechte gesetzt, unter Windows gelten die Rechte deines Benutzerprofils. Gib diese Datei, FreeLLMAPI-Datenbanken, `.env` oder API-Schluessel nicht weiter und lade sie nicht auf GitHub. Mit „Verbindung“ kannst du den Schluessel ersetzen. Zum Entfernen die genannte Datei bei gestopptem Chat loeschen.
 
@@ -61,6 +77,7 @@ Der Chat lauscht ausschliesslich auf Loopback, prueft Host und Browser-Ursprung 
 ```sh
 npm ci
 npm test
+npm run test:browser  # optional: Chromium erforderlich, CHROME_PATH bei Bedarf setzen
 npm start
 ```
 

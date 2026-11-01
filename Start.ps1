@@ -51,14 +51,27 @@ try {
         } finally { $env:FREELLMAPI_API_KEY = $previousApiKey }
         exit $claudeExitCode
     }
-    $running = $false
-    try { $running = (Invoke-WebRequest 'http://127.0.0.1:3210' -UseBasicParsing -TimeoutSec 2).Content.Contains('Neu') } catch {}
+    $expected = (& node (Join-Path $PSScriptRoot 'runtime-info.mjs')) | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or -not $expected.build) { throw 'Projektdateien sind unvollstaendig. Bitte die neue ZIP komplett entpacken.' }
+    function Test-CurrentChat {
+        try {
+            $health = Invoke-RestMethod 'http://127.0.0.1:3210/healthz' -TimeoutSec 2
+            return ($health.app -eq 'neu-chat' -and $health.build -eq $expected.build)
+        } catch { return $false }
+    }
+    $running = Test-CurrentChat
+    if (-not $running) {
+        # Only a process recorded by our starter may be stopped automatically.
+        Stop-NeuBackground 'chat'
+        $occupied = Get-NetTCPConnection -LocalPort 3210 -State Listen -ErrorAction SilentlyContinue
+        if ($occupied) { throw 'Auf Port 3210 laeuft noch eine alte oder manuell gestartete App. In deren PowerShell-Fenster Strg+C druecken; danach diesen neuen Starter erneut oeffnen. Keine fremden Programme werden beendet.' }
+    }
     if (-not $running) {
         Write-Host 'Starte deinen Chat ...'
         Start-NeuBackground 'chat' $PSScriptRoot (Join-Path $PSScriptRoot 'server.mjs')
         for ($i = 0; $i -lt 30; $i++) {
             try {
-                if ((Invoke-WebRequest 'http://127.0.0.1:3210' -UseBasicParsing -TimeoutSec 2).Content.Contains('Neu')) { $running = $true; break }
+                if (Test-CurrentChat) { $running = $true; break }
             } catch {}
             Start-Sleep -Milliseconds 500
         }

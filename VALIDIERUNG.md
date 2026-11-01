@@ -21,3 +21,12 @@
 - Reproduzierbare Installation mit `npm ci` erfolgreich; `npm audit --omit=dev` meldete keine bekannten Schwachstellen zum Pruefzeitpunkt.
 - Dateiparser und FFmpeg wurden auf Linux mit Node.js 24.19.0 ausgefuehrt. Windows-Paketinstallation und Hintergrundstarter sind weiterhin nicht auf einem Windows-System verifiziert.
 - Videos werden nur als begrenzte Standbildfolge analysiert. Vollstaendige Video-/Audioanalyse und echtes Bearbeiten von Bild-/Videodateien wurden nicht implementiert oder behauptet.
+
+## Arbeitsmodi und Update-Pruefung, Version 1.2.0
+
+- 18 HTTP-/Integrationstests bestanden. Neu: Versions-/Build-Erkennung, echte PNG-Verarbeitung einer simulierten Bildanbieter-Antwort, klare Fehler bei fehlendem Bildanbieter, Ablehnung reiner externer Bild-URLs und CSP-getrennte HTML-Vorschau.
+- `npm run test:browser` bestanden: Datei-Upload, Markdown und Code-Dateien, Projekt-ZIP mit den richtigen Inhalten, interaktive HTML/CSS/JS-Vorschau, gesperrter Zugriff auf das Chat-Dokument, gesperrtes Fetch aus der Vorschau, bereinigtes KI-HTML, Bildmodus mit simuliertem Anbieter, Mobilansicht und Update-Hinweis statt „Nicht gefunden“ bei einem simulierten alten Server.
+- Echte Code-Erstellung mit `openai/gpt-oss-120b` durch FreeLLMAPI: eine vollstaendige HTML-Notiz-App wurde erzeugt und als Vorschau geoeffnet. Keine Browser-JavaScript-Fehler beobachtet.
+- Die Bildgeneration wurde mit simulierten Antworten getestet. Die ausgelesenen Cloud-Gateway-Metadaten enthielten kein aktiviertes Bildmodell mit verbundenem Anbieter. Deshalb wurde keine echte Bild-Erzeugung als erfolgreich behauptet oder ohne bekannten Tarif aufgerufen.
+- Installation aus dem Lockfile mit `npm ci` und Paketpruefung erfolgreich; keine gemeldeten Schwachstellen zum Pruefzeitpunkt.
+- Die neue Windows-Versionspruefung wurde hier nicht auf einem Windows-System ausgefuehrt. Der beobachtete Upload-404 passt zu einem alten Hintergrundserver; der konkrete Prozess auf dem PC des Nutzers war nicht direkt zugaenglich.
