@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Neu · Dein KI-Chat</title><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body>
+  <aside><a class="brand" href="/" aria-label="Neu Chat Startseite"><span class="logo">n.</span> neu<span class="dot">/</span></a>
+    <button id="new-chat" class="new">＋ Neuer Chat</button>
+    <p class="aside-label">DEIN ARBEITSPLATZ</p><div class="side-item">◉ <span>Persönlicher Assistent</span></div>
+    <div class="sidebar-bottom"><div class="local"><span class="pulse"></span> Läuft auf deinem Computer</div><p>Deine Anbieter. Deine Modelle.<br>Ein Ort für deine Ideen.</p><button id="connection" class="quiet">⚙ Verbindung</button></div>
+  </aside>
+  <main>
+    <header><div><span class="eyebrow">NEU CHAT</span><div class="model-picker"><label for="model">Modell</label><select id="model"><option value="auto">Automatisch · mit Fallback</option></select></div></div><span id="status" class="status" role="status">Verbinde …</span></header>
+    <div class="conversation" id="conversation" aria-live="polite" aria-relevant="additions text">
+      <section id="welcome" class="welcome"><span class="welcome-badge">PLATZ FÜR DEINE NÄCHSTE IDEE</span><h1>Was machen<br>wir <em>heute?</em></h1><p>Ein Gedanke, eine Frage, ein neuer Anfang.<br>Dein KI-Assistent denkt mit.</p>
+        <div class="suggestions"><button data-prompt="Hilf mir, eine Idee in einen konkreten Plan mit kleinen Schritten zu verwandeln."><span>↗</span> Eine Idee weiterdenken<small>Vom Gedanken zum nächsten Schritt</small></button><button data-prompt="Hilf mir beim Programmieren. Frage zuerst, was ich erstellen möchte und welche Vorkenntnisse ich habe."><span>⌘</span> Etwas Neues bauen<small>Code verstehen und Projekte starten</small></button><button data-prompt="Hilf mir, einen klaren, freundlichen Text zu schreiben. Frage mich zuerst nach Anlass und Zielgruppe."><span>✎</span> Die richtigen Worte finden<small>Schreiben, überarbeiten, vereinfachen</small></button></div>
+      </section>
+      <div id="messages"></div>
+    </div>
+    <div class="compose-area"><div id="notice" class="notice" role="alert" hidden></div><form id="chat-form"><label class="sr-only" for="prompt">Deine Nachricht</label><textarea id="prompt" rows="1" maxlength="20000" placeholder="Frag, was dich weiterbringt …" required></textarea><div class="composer-footer"><span id="routing-label">✦ Automatische Modellwahl über FreeLLMAPI</span><button id="stop" type="button" hidden>■ Stoppen</button><button id="send" type="submit" aria-label="Nachricht senden">↑</button></div></form><p class="fineprint">KI kann Fehler machen. Prüfe wichtige Antworten. Es gelten die Kontingente deiner Anbieter.</p></div>
+  </main>
+  <dialog id="settings"><form id="connection-form"><span class="eyebrow">DEINE VERBINDUNG</span><h2>Einmal verbinden.<br>Dann loslegen.</h2><p>Füge den <strong>zentralen FreeLLMAPI-Schlüssel</strong> aus dem Bereich „Schlüssel“ deines lokalen Dashboards ein. Deine Anbieter-Schlüssel bleiben in FreeLLMAPI.</p><label for="api-key">FreeLLMAPI-Schlüssel</label><input id="api-key" name="key" type="password" autocomplete="off" placeholder="freellmapi-…" required minlength="8"><p class="hint">Wird nur auf deinem Computer gespeichert und nie in Chat-Nachrichten eingefügt.</p><p id="connection-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="close-settings" class="quiet">Schließen</button><button id="save-key" class="primary" type="submit">Verbinden →</button></div><a href="http://127.0.0.1:3001/keys" target="_blank" rel="noopener noreferrer">FreeLLMAPI-Dashboard öffnen ↗</a></form></dialog>
+</body></html>

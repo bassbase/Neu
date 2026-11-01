@@ -1,0 +1,4 @@
+*.cmd -text whitespace=cr-at-eol
+*.mjs text eol=lf
+*.js text eol=lf
+*.ps1 text eol=crlf
