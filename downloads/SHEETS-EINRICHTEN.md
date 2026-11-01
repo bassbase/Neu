@@ -1,89 +1,106 @@
-# ✦ USHERO – farbiges Google-Sheets-Dashboard
+# USHERO Sheets V3 – Verbindung und Rückweg
 
-`USHERO-Dashboard.xlsx` ist eine leere, gestaltete Vorlage mit zwölf Blättern.
-Sie enthält **keine** Benutzerbuchungen und keine Schlüssel. Das enthaltene
-`Code.gs` gestaltet auch eine bestehende Google-Tabelle direkt und übernimmt
-den aktuellen Datenbankstand deines Bots. Ein XLSX-Import allein verbindet den
-Bot noch nicht und installiert kein Apps Script.
+Die Vorlage enthält 13 farbige Blätter einschließlich **Änderungen**. Der Bot
+sendet seinen Datenstand nach Sheets. Zurück übernommen werden ausschließlich
+**Lagerbestand und Dienstplan**, wie vereinbart. Verkäufe, Abrechnungen, Löhne
+und andere Geldbuchungen werden weiterhin im Bot vorgenommen.
 
-## Einmal in deiner Google-Tabelle einrichten
+## Wichtig zu deinen Links
 
-1. `USHERO-Dashboard.xlsx` in Google Drive hochladen und **mit Google Tabellen
-   öffnen**, dann als Google-Tabelle speichern. Alternativ deine bereits
-   vorhandene Google-Tabelle verwenden.
-2. Dort **Erweiterungen → Apps Script** öffnen. Den bisherigen USHERO-Code durch
-   den vollständigen Inhalt der mitgelieferten **`Code.gs`** ersetzen und speichern.
-   Im Script-Projekt nur diese eine aktuelle Backend-Version behalten, damit
-   alte `doPost`-/`doGet`-Funktionen nicht doppelt definiert sind.
-3. Oben **`USHERO_einrichten`** auswählen und ausführen. Google fragt dabei nach
-   deiner Berechtigung für deine eigene Tabelle. Danach die Tabelle neu laden.
-   Unter **✦ USHERO → Verbindungsschlüssel einrichten** leer bestätigen, um einen
-   langen Schlüssel zu erzeugen. Er wird in Script Properties gespeichert,
-   nicht in Tabellenzellen. Den Schlüssel für den nächsten Schritt lokal
-   bereithalten und nicht im Chat oder auf GitHub teilen.
-4. **Bereitstellen → Neue Bereitstellung → Web-App**. Ausführen als dein Konto.
-   Für den Bot-Zugriff muss die Web-App den Aufruf ohne interaktive Google-
-   Anmeldung erlauben; das Backend prüft zusätzlich den langen gemeinsamen
-   Schlüssel. Nur die **`/exec`-URL** der Web-App verwenden. Die Google-Tabelle
-   selbst muss nicht öffentlich freigegeben werden. Falls dein Workspace-Admin
-   diesen Web-App-Zugriff untersagt, funktioniert diese Verbindungsart nicht.
-   Bei einem bestehenden Deployment die neue Version über „Bereitstellungen
-   verwalten“ aktualisieren; bloßes Speichern ändert ein altes Deployment nicht.
-5. Auf deinem PC **`Sheets-verbinden.bat`** öffnen. Die `/exec`-URL einfügen und
-   den generierten Schlüssel verdeckt eingeben. Bestehende `.env`-Einträge,
-   einschließlich des Discord-Tokens, bleiben erhalten. Den Bot anschließend
-   neu starten. Unter **Leitung → Sheets-Status** bzw. **Sheets abgleichen**
-   wird die erste erfolgreiche Bestätigung angezeigt.
+- Die URL `https://script.google.com/macros/s/…/exec` ist die Web-App-Adresse.
+- Die lange Kennung mit `AKfy…` ist deren **Bereitstellungs-ID**, kein geheimer
+  Verbindungsschlüssel. Sie gehört nicht in `SHEETS_SHARED_KEY`.
+- Ein Link mit `/macros/library/…` ist ein Bibliothekslink und kein Bot-Endpunkt.
+- Der Verbindungsschlüssel wird separat im **USHERO-Menü der Tabelle** erzeugt.
+  Er bleibt auf deinem PC und in Script Properties. Nicht im Chat teilen.
 
-Die Einrichtung in Google und die Freigabe deiner eigenen Tabelle musst du
-selbst ausführen. Die Cloud-Arbeit hat weder dein Google-Konto autorisiert noch
-bereits eine echte Tabelle verändert.
+## Bestehende Google-Tabelle aktualisieren
 
-## Gestaltung und Daten
+1. Die vorhandene Google-Tabelle öffnen. Für einen neuen Aufbau die enthaltene
+   `USHERO-Dashboard.xlsx` in Google Drive importieren und als Google-Tabelle
+   speichern. Ein XLSX-Import allein verbindet den Bot noch nicht.
+2. **Erweiterungen → Apps Script**. Den alten USHERO-Backendcode vollständig
+   durch die aktuelle `Code.gs` ersetzen. Nur eine aktuelle Version von
+   `doPost`, `doGet` und `onEdit` im Projekt behalten; keine zweite alte Kopie
+   oder zusätzliche USHERO-Bibliothek für diesen Backendcode einbinden.
+3. **`USHERO_einrichten`** einmal ausführen und die Berechtigungen für deine
+   eigene Tabelle bestätigen. Dadurch werden Gestaltung und Änderungsblatt
+   angelegt. Bestehende Blätter mit alten Spalten werden vorher archiviert.
+4. Tabelle neu laden → **✦ USHERO → Verbindungsschlüssel einrichten**. Leer
+   bestätigen erzeugt einen neuen langen Schlüssel. Diesen lokal bereithalten.
+5. **Bereitstellen → Bereitstellungen verwalten → Bearbeiten → Neue Version**
+   und erneut bereitstellen. Nur Speichern im Editor aktualisiert eine alte
+   Web-App-Bereitstellung nicht. Bei einer neuen Bereitstellung „Web-App“ wählen.
+   Ausführung als dein Konto; der Bot-Aufruf muss ohne interaktive Google-
+   Anmeldung erlaubt sein. Das Backend prüft zusätzlich den langen Schlüssel.
+   Die Tabelle selbst muss nicht öffentlich freigegeben werden. Workspace-
+   Richtlinien können diese Verbindungsart verhindern.
+6. Auf deinem PC **`Sheets-verbinden.bat`** öffnen. Die `/exec`-URL und den
+   separat erzeugten Schlüssel eingeben. Die Eingabe des Schlüssels ist verborgen.
+   Der Bot-Token bleibt erhalten. Das Programm testet die tatsächliche Web-App-
+   Antwort und meldet Fehler, statt die Verbindung ungeprüft als fertig zu melden.
+7. Bot neu starten. Unter **Buchhaltung → Sheets-Status / Sheets abgleichen**
+   den ersten bestätigten Abgleich prüfen. Erst danach Zellen in Sheets bearbeiten.
 
-Dashboard, Verkäufe, VIP, Tanz-Sessions, Security, Dienstzeiten, Dienstplan,
-Abrechnungen, Firmenkasse, Lagerbestand, Bestellungen und Team. Dunkler
-Hintergrund, pinke/cyanfarbene Akzente, unterschiedliche Reiterfarben, fixierte
-Überschriften, Filter und lesbare Geldformate. Lagerwarnungen und Status erhalten
-passende Warnfarben. Google-Sheets-Menüs und Browserrahmen selbst werden nicht
-umgefärbt; gestaltet werden deine Tabellenzellen und Diagramme.
+Das Öffnen einer geschützten `/exec`-URL im Browser ohne Schlüssel darf eine
+Ablehnung zeigen. Die lokale Verbindungshilfe sendet den authentifizierten
+Status-Aufruf. Sie unterscheidet Bibliothekslink, fehlenden/falschen Schlüssel,
+HTML-/Anmeldeseite, alte Code-Version, fehlende Tabelleneinrichtung und HTTP-Fehler.
+Die Cloud hat weder dein Google-Konto autorisiert noch dein Deployment geändert.
 
-Das Dashboard zeigt Gesamtumsatz, Firmenkasse, Mitarbeiteranteile, offene
-Bestellungen, aktive Dienste und niedrigen Lagerbestand. Tanzumsätze sind
-bereits in den Verkaufsbuchungen enthalten und werden im Gesamtumsatz nicht
-noch einmal zusätzlich addiert. Der Zeitpunkt zeigt nur einen bestätigten
-Abgleich, keine erfundene erfolgreiche Verbindung.
+## Sheets → Discord / Bot
 
-## Abgleich und bestehende Daten
+Nach dem ersten bestätigten Abgleich:
 
-Etwa jede Minute wird ein vollständiger, konsistenter Stand aus der lokalen
-Datenbank übertragen. Dasselbe Snapshot schreibt keine zusätzlichen Zeilen;
-Doppelklicks oder erneute Übertragung erzeugen keine weiteren Verkaufsbuchungen.
-Bei unverändertem Datenstand wird nur die Bestätigung aktualisiert. Der Bot
-führt seine Buchungen weiter lokal, auch wenn Sheets offline ist. „Sheets abgleichen“
-kann den Spiegel bewusst vollständig aktualisieren.
+- **Lagerbestand:** Im Blatt `Lagerbestand` nur die Spalte **Bestand** ändern.
+  Artikelbezeichnungen und versteckte Baselines unverändert lassen.
+- **Dienstplan:** Mitarbeiter-ID, Datum, Bereich, Von, Bis und Notiz bearbeiten.
+  IDs aus `Team` verwenden. Für einen neuen Eintrag eine leere Zeile ohne eigene
+  Plan-ID füllen; die ID wird automatisch vergeben. Datum als `YYYY-MM-DD` oder
+  `DD.MM.YYYY`, Uhrzeiten als `HH:MM`. Mitarbeiter müssen zum aktuellen Team gehören.
+- **Plan löschen:** Die gewünschte Zeile auswählen und im Menü **✦ USHERO →
+  Ausgewählten Dienstplaneintrag löschen** bestätigen. Leeren von Zellen allein
+  löscht keine gespeicherte Schicht.
 
-Die Tabellen sind ein **Spiegel**, kein zweites Buchungssystem. Beträge und
-Buchungen im Bot erfassen. Änderungen in verwalteten Datentabellen werden beim
-nächsten veränderten Datenstand oder manuellen Vollabgleich überschrieben.
-Eigene Notizen in einem separaten Blatt führen. Bei einem alten Spaltenaufbau
-werden vorhandene Blätter zuerst als **Archiv …** umbenannt; die bisherigen
-Inhalte werden nicht gelöscht. Private Bewerbungs- und Verwarnungstexte werden
-nicht in diesen Finanz-/Team-Spiegel exportiert.
+Der Rückweg läuft ungefähr jede Minute oder über **Sheets abgleichen**. Im Blatt
+**Änderungen** steht pro Änderung **Offen**, **Übernommen** oder **Fehler** samt
+Rückmeldung. Erst „Übernommen“ bestätigt, dass die lokale Datenbank aktualisiert
+ist. Die Discord-Buttons lesen anschließend diese neuen Lager-/Planwerte.
+Normale Mitarbeiter sehen im Discord-Dienstplan nur ihre eigenen Einträge;
+Leitung und Schichtleitung dürfen die Übersicht sehen.
 
-Die Datenquelle ist an die lokale Datenbank gebunden. Eine fremde/neue Datenbank
-überschreibt nicht stillschweigend den verbundenen Stand. Für einen bewussten
-Wechsel im Tabellenmenü **Andere Bot-Datenquelle erlauben** wählen; vorher
-werden vorhandene Datentabellen archiviert. In der neuen Bot-Version immer die
-aktuellste eigene `data/bot.db` übernehmen.
+Jede Änderung wird nur einmal verarbeitet, auch bei Verbindungsfehlern und
+erneuter Übertragung. Hat der Bot den betreffenden Bestand oder Planeintrag
+inzwischen geändert, wird die veraltete Änderung als **Konflikt** abgewiesen.
+Dann erst neu abgleichen und die gewünschte Änderung erneut eingeben. Unfertige
+neue Planzeilen werden als Entwürfe behalten; gültige Einträge erscheinen nach
+Bestätigung mit der Datenbank-ID. Höchstens 100 Zeilen auf einmal bearbeiten.
 
-Grenzen: 10.000 Zeilen je Datenblatt und etwa 7 MB je Snapshot. Zu große Stände
-werden vollständig abgewiesen und nicht als unvollständige Kopie übertragen.
-Google Apps Script und Google Tabellen haben eigene Kontingente und Limits.
-Der Export benötigt kein kostenpflichtiges KI-Modell, verspricht aber keine
-unbegrenzten Google-Kontingente. Der Bot überträgt bei aktivierter Verbindung
-die dargestellten Betriebsdaten und Mitarbeiter-IDs/-Namen an deine Google-
-Tabelle; deren Freigaben sorgfältig wählen.
+Geldzellen werden niemals als Buchung importiert. Änderungen dort werden mit
+Hinweis beim nächsten Abgleich durch den gültigen Bot-Stand ersetzt. Private
+Bewerbungs- und Verwarnungstexte gehören nicht zum Finanz-/Team-Export.
 
-Die Logik wurde offline getestet. Google-Autorisierung, tatsächliche Bereitstellung,
-Import und Live-Abgleich sind nicht als bereits erfolgreich bestätigt.
+## Rechte und Datenhaltung
+
+Das Gesamt-Workbook nur mit vertrauenswürdiger Leitung/Buchhaltung teilen.
+Discord-Kanalrechte ändern keine Google-Freigaben. Versteckte oder geschützte
+Tabellenblätter sind keine sichere Trennung für Personen, die die gesamte
+Datei lesen dürfen. Reguläre Mitarbeiter benutzen ihre getrennten Discord-
+Bereiche. Der gemeinsame Verbindungsschlüssel ist eine administrative Freigabe
+für die erlaubten Rückweg-Aktionen und gehört nicht in Mitarbeiter-Chats.
+
+Die lokale Datenbank bleibt die Buchungsbasis. Bei einer anderen Datenbank
+schützt die Quellenbindung vorhandene Sheets-Daten. Ein bewusster Wechsel über
+**Andere Bot-Datenquelle erlauben** archiviert vorher Tabellen und Änderungsblatt.
+Eigene freie Notizen auf einem separaten Blatt führen. In verwalteten Datentabellen
+nur die oben genannten Rückweg-Felder bearbeiten.
+
+Grenzen: 10.000 Zeilen je exportiertem Datenblatt, etwa 7 MB je Snapshot,
+50 Rückweg-Aktionen je Abgleich; Google hat zusätzliche Kontingente. Zu große
+Datenstände werden nicht als unvollständige Kopie übertragen. Langtexte werden
+gegebenenfalls mit sichtbarem Hinweis gekürzt. Ein kostenpflichtiges KI-Modell
+wird für diesen Datenabgleich nicht benötigt.
+
+Vorlage, Datenlogik und Apps-Script-Verhalten wurden offline geprüft. Echte
+Google-Autorisierung, tatsächliches Deployment und Live-Abgleich müssen mit der
+lokalen Verbindungshilfe bestätigt werden.
