@@ -44,3 +44,11 @@
 - Browser-Test prueft zusaetzlich automatische Folgeantwort, Stopp bei Anbieterfehler, expliziten Abbruch und maximal drei automatische Fortsetzungen. Die Gateway-Tests waehlen ihren externen Modus ausdruecklich.
 - Es ist kein echter Ollama-Dienst oder heruntergeladenes lokales Modell in dieser Umgebung installiert. Lokale Antwortlogik ist gegen einen simulierten Dienst geprueft. Keine echte lokale Inferenz oder Windows-Installation behauptet.
 - Kostenlos-unbegrenzt mit allen Funktionen proprietaerer KI-Dienste ist nicht implementiert oder zugesichert. Lokaler Chat hat keine externen KI-API-Aufrufe; Hardware-/Kontextgrenzen bleiben. Optionaler Gateway-Betrieb unterliegt Anbieterpreisen.
+
+## Sicherheitsueberarbeitung der Starter, Version 1.4.1
+
+- Anlass ist die reale Defender-Meldung `Trojan:Script/Sabsik.FL.A!ml` beim Nutzer. Ursache und betroffener Eintrag innerhalb des Downloads sind offen; kein Fehlalarm oder beseitigter Fund bestaetigt. Siehe [SICHERHEITSPRUEFUNG.md](SICHERHEITSPRUEFUNG.md).
+- Ausfuehrungsrichtlinien werden nicht mehr durch Starter uebergangen. Serverfenster sind sichtbar, Ollama wird nicht automatisch installiert, Paketinstallation und Modelldownload verlangen eine ausdrueckliche Bestaetigung.
+- Alle 26 Integrationstests nach der Ueberarbeitung bestanden. `npm audit --omit=dev` meldete keine bekannten Schwachstellen. Beides ist kein Malware-Scan.
+- Browser-Test nach dem Versionswechsel bestanden: Upload, Markdown, kompletter Projekt-ZIP-Download, interaktive getrennte Vorschau, HTML-Bereinigung, Bildmodus mit simuliertem Anbieter, Fortsetzungsgrenzen, Mobilansicht und Update-Fehlerhinweis.
+- Windows-Ausfuehrung, PowerShell-Syntaxpruefung durch den Windows-Parser und Microsoft-Defender-Scan bleiben offen. Es wurden keine Quarantaenedateien wiederhergestellt, Schutzregeln veraendert oder Dateien an fremde Scanner hochgeladen.

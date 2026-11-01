@@ -10,6 +10,9 @@ try {
         $stampFile = Join-Path $PSScriptRoot 'node_modules\.neu-lock-hash'
         $installedHash = if (Test-Path -LiteralPath $stampFile) { (Get-Content -Raw -LiteralPath $stampFile).Trim() } else { '' }
         if ($installedHash -ne $lockHash) {
+            Write-Host 'Die im package-lock.json festgelegten npm-Pakete fehlen oder wurden geaendert.'
+            Write-Host 'npm ci laedt Pakete und fuehrt deren Installationsskripte aus, unter anderem fuer FFmpeg und Bildverarbeitung.'
+            if ((Read-Host 'Diese Abhaengigkeiten jetzt installieren? Tippe JA zum Bestaetigen') -cne 'JA') { throw 'Installation abgebrochen. Es wurden keine Pakete installiert.' }
             Write-Host 'Installiere Dateiverarbeitung und Videowerkzeug. Beim ersten Start kann das einige Minuten dauern ...'
             Push-Location -LiteralPath $PSScriptRoot
             try {
@@ -29,7 +32,7 @@ try {
         Write-Host 'Starte FreeLLMAPI ...'
         Start-NeuBackground 'gateway' $gatewayRoot $server
         for ($i = 0; $i -lt 30 -and -not (Test-Gateway); $i++) { Start-Sleep -Milliseconds 500 }
-        if (-not (Test-Gateway)) { throw 'FreeLLMAPI startet nicht. Protokolle unter %LOCALAPPDATA%\NeuChat\logs pruefen.' }
+        if (-not (Test-Gateway)) { throw 'FreeLLMAPI startet nicht. Bitte die Meldung im sichtbaren Gateway-Fenster pruefen.' }
     }
     if ($GatewayOnly) { Write-Host 'FreeLLMAPI bereit. Im Browser bewusst FreeLLMAPI waehlen; Anbietertarife gelten.'; exit 0 }
     if ($Claude) {
@@ -77,7 +80,7 @@ try {
             Start-Sleep -Milliseconds 500
         }
     }
-    if (-not $running) { throw 'Der Chat startet nicht. Protokolle unter %LOCALAPPDATA%\NeuChat\logs pruefen.' }
+    if (-not $running) { throw 'Der Chat startet nicht. Bitte die Meldung im sichtbaren Chat-Serverfenster pruefen.' }
     Start-Process 'http://127.0.0.1:3210'
-    Write-Host 'Chat geoeffnet. Die Dienste laufen im Hintergrund. Zum Beenden Stop.cmd verwenden.'
+    Write-Host 'Chat geoeffnet. Das sichtbare Serverfenster offen lassen. Zum Beenden dort Strg+C oder Stop.cmd verwenden.'
 } catch { Write-Host $_.Exception.Message -ForegroundColor Red; exit 1 }

@@ -1,7 +1,7 @@
 import { renderAnswer, saveFile } from './workspace.js';
 import { parseProjectFiles } from './project-files.js';
 const $ = selector => document.querySelector(selector);
-const CLIENT_VERSION = '1.4.0';
+const CLIENT_VERSION = '1.4.1';
 const messages = [];
 let busy = false;
 let controller;

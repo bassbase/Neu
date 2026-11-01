@@ -7,5 +7,5 @@ try {
         catch { Write-Host $_.Exception.Message -ForegroundColor Red; $failed = $true }
     }
     if ($failed) { exit 1 }
-    Write-Host 'Eigene Hintergrunddienste beendet. Manuell gestartete Dienste bleiben unberuehrt.'
+    Write-Host 'Eigene registrierte Dienste beendet. Manuell gestartete Dienste und Ollama bleiben unberuehrt.'
 } catch { Write-Host $_.Exception.Message -ForegroundColor Red; exit 1 }
