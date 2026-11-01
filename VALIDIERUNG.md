@@ -9,7 +9,7 @@
 
 ## Noch nicht bestaetigt
 
-- Die neuen Dateien `Start.ps1`, `Start.cmd` und `Claude.cmd` sind fuer Windows erstellt, aber in dieser Linux-Umgebung nicht auf Windows ausgefuehrt worden.
+- Die Windows-Starter (einschliesslich `Background.ps1`, `Stop.ps1` und `Stop.cmd`) sind fuer Hintergrundstart und gezieltes Beenden der eigenen Dienste erstellt, aber in dieser Linux-Umgebung nicht auf Windows ausgefuehrt worden.
 - Ein echter, durch erschoepftes Kontingent ausgeloester Wechsel zwischen zwei Anbietern wurde nicht erzwungen.
 - Weitere Anbieter werden erst durch die eigenen Konten und Schluessel des Nutzers nutzbar. Es wurden keine Konten angelegt und keine 600 Modelle freigeschaltet.
 - Eine Veroeffentlichung der Cloud-Konfiguration und ein erneuter Snapshot-Start nach dieser App-Erstellung wurden nicht durch den Agenten ausgefuehrt.
