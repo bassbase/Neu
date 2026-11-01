@@ -1,13 +1,13 @@
 # Neu Chat
 
-Dein eigener lokaler KI-Chat mit deutscher Oberflaeche, Modellwahl, laufend angezeigten Antworten und Verbindung zu FreeLLMAPI. Keine npm-Abhaengigkeiten fuer diesen Chat.
+Dein eigener lokaler KI-Chat mit deutscher Oberflaeche, Modellwahl, Datei-Anhaengen, laufend angezeigten Antworten und Verbindung zu FreeLLMAPI.
 
 ## Windows: starten
 
 Voraussetzungen: Node.js 22 oder 24 und deine bereits eingerichtete FreeLLMAPI-Installation unter `%USERPROFILE%\FreeLLMAPI` mit mindestens einem funktionierenden Anbieter.
 
 1. Diesen Projektordner herunterladen und entpacken.
-2. `Start.cmd` doppelt anklicken. Der Starter startet FreeLLMAPI und den Chat bei Bedarf im Hintergrund und oeffnet deinen Browser. Es muessen keine Server-Terminals geoeffnet bleiben.
+2. `Start.cmd` doppelt anklicken. Der Starter installiert bei Bedarf die im Lockfile festgelegten Pakete einschliesslich des Videowerkzeugs (Internet erforderlich). Beim ersten Start dauert dies einige Minuten. Danach startet er FreeLLMAPI und den Chat im Hintergrund und oeffnet deinen Browser. Es muessen keine Server-Terminals geoeffnet bleiben.
 3. Beim ersten Start den **zentralen FreeLLMAPI-Schluessel** aus dem lokalen FreeLLMAPI-Dashboard unter „Schluessel“ eintragen. Den Google-Schluessel verwaltest du ausschliesslich dort.
 4. Eine Nachricht schreiben. Enter sendet, Shift+Enter macht einen Absatz. Mit „Stoppen“ brichst du die Antwort ab.
 
@@ -18,6 +18,27 @@ Zum Beenden der durch diesen Starter gestarteten Dienste `Stop.cmd` doppelt ankl
 **Umstieg von der bisherigen Version:** Alte manuell gestartete Server in ihren PowerShell-Fenstern zuerst mit Strg+C beenden. Danach `Start.cmd` aus dem aktualisierten Projektordner starten. Ein bereits in einem alten Fenster laufender Dienst wird wiederverwendet und kann nicht automatisch versteckt werden. Claude Code bleibt ein interaktives Terminalprogramm; fuer die Chat-Webseite benoetigst du dieses Terminal nicht.
 
 Die einmal gespeicherte Chat-Verbindung bleibt unter `%LOCALAPPDATA%\NeuChat\gateway.json` erhalten. Der Browser mit dem FreeLLMAPI-Dashboard kann geschlossen werden. Laufzeit-Protokolle liegen unter `%LOCALAPPDATA%\NeuChat\logs`; sie koennen persoenliche Details enthalten und sollten nicht ungeprueft weitergegeben werden. Es wird kein Windows-Autostart eingerichtet: Nach einer Neuanmeldung einfach wieder `Start.cmd` oeffnen.
+
+## Dateien anhaengen und verbessern lassen
+
+Mit **„+ Dateien“**, per Drag-and-drop auf das Eingabefeld oder durch Einfuegen eines Bildes aus der Zwischenablage. Danach eine Frage oder einen Verbesserungswunsch schreiben und senden. Die App zeigt vorab an, welche Inhalte gelesen wurden. Erst beim Senden gehen diese Inhalte an den KI-Anbieter. „Speichern“ an einer Antwort laedt deren Text als TXT herunter; „Kopieren“ uebernimmt ihn in die Zwischenablage.
+
+| Datei | Was die KI erhaelt |
+| --- | --- |
+| PNG, JPG, WebP, AVIF, GIF | Verkleinertes Bild; bei GIF nur erstes Einzelbild. Ein Vision-Modell ist erforderlich. |
+| TXT, Markdown, CSV, JSON, Quellcode und weitere UTF-8-Textformate | Textinhalt. |
+| PDF | Text aus maximal 30 Seiten, ohne eingebettete Bilder und Layout. Gescannten PDFs fehlt oft der Text; OCR ist nicht enthalten. |
+| DOCX | Text, ohne Bilder und Layout. |
+| ZIP, RAR | Bis zu 20 lesbare Dokumente, Code-/Textdateien oder Bilder. Uebersprungene Dateien werden aufgefuehrt. Keine Programme oder verschachtelten Archive. |
+| MP4, MOV, M4V, WebM, MKV, AVI | Bis zu sechs Standbilder, ab Beginn etwa alle zehn Sekunden, nur erste 60 Sekunden. Kein Ton und keine vollstaendige Videoanalyse. |
+
+Grenzen: maximal 5 Dateien pro Nachricht, 25 MB je Datei und 50 MB je Upload; Bilder maximal 25 Megapixel. Archive maximal 60 Eintraege und 15 MB entpackter Inhalt, keine Passwoerter oder mehrteiligen RARs. Text wird pro Datei auf 40.000 Zeichen begrenzt, mit Hinweis. Der Verlauf darf insgesamt maximal 120.000 Zeichen aus Anhaengen und 12 Bilder enthalten. Unterstuetzt ein gewaehltes Modell keine Bilder, „Automatisch“ verwenden und ein Vision-Modell in der FreeLLMAPI-Fallback-Kette aktivieren.
+
+Die KI kann Texte oder Code ueberarbeiten sowie Bilder und Videostandbilder beurteilen und Verbesserungsvorschlaege machen. Sie bearbeitet keine Originaldateien auf dem PC. Bild-Retusche, Bildgenerierung, Video-Schnitt, OCR und Audio-Transkription sind hier nicht enthalten. Unbekannte Formate, alte DOC-Dateien, Tabellen im XLS/XLSX-Format, ausfuehrbare und passwortgeschuetzte Dateien werden nicht pauschal unterstuetzt. Eine Dateiendung allein ist kein Nachweis, dass ihr Inhalt gelesen wurde.
+
+Dateien werden in einem separaten Prozess mit Zeit- und Speichergrenzen gelesen. Archive werden in den Speicher entpackt und niemals ausgefuehrt. Rohdaten und Videostandbilder liegen waehrend der Verarbeitung in einem zufaelligen temporaeren Ordner, der danach entfernt wird. Verarbeitete Inhalte bleiben im Arbeitsspeicher des lokalen Servers fuer bis zu 30 Minuten (Bereinigung im Minutentakt), solange du sie nicht vorher entfernst oder „Neuer Chat“ waehlst. Nach Ablauf oder Server-Neustart ist ein neuer Upload erforderlich. Es wird kein Dateiarchiv auf GitHub oder im Browser-Speicher angelegt.
+
+**Update:** Im alten Projektordner zuerst `Stop.cmd` starten. Die neue ZIP entpacken und `Start.cmd` aus dem neuen Ordner verwenden. Vorhandene Anbieter- und Chat-Schluessel bleiben in ihren getrennten Datenordnern erhalten.
 
 ## Anbieter und automatischer Wechsel
 
@@ -38,6 +59,7 @@ Der Chat lauscht ausschliesslich auf Loopback, prueft Host und Browser-Ursprung 
 ## Entwicklung und Cloud
 
 ```sh
+npm ci
 npm test
 npm start
 ```
@@ -48,6 +70,6 @@ Die Cloud ist vom Windows-PC getrennt. `Start.ps1` ist ausschliesslich fuer Wind
 
 ## Grenzen und Pruefungen
 
-Die Tests pruefen Chat-Weiterleitung mit Verlauf, Streaming, Anbieterfehler, fehlende Schluessel, Browser-Ursprung, Authentifizierung und Schluesselspeicherung. Echte KI-Anfragen muessen mit dem vorhandenen Anbieterzugang separat geprueft werden. Ein Live-Wechsel zwischen mehreren Anbietern ist erst dann bestaetigt, wenn er tatsaechlich beobachtet wurde. Der Windows-Starter muss auf Windows geprueft werden; ein Linux-Test allein bestaetigt ihn nicht.
+Die Tests pruefen Chat-Weiterleitung mit Verlauf, Streaming, Anbieterfehler, fehlende Schluessel, Browser-Ursprung, Authentifizierung, Schluesselspeicherung, echte Dateiextraktion aus PDF/DOCX/ZIP/RAR, Videostandbilder, Multimodal-Nachrichten und Upload-Grenzen. Eine echte gemeinsame Bild-/Textanfrage wurde mit Gemini im Browser bestaetigt. Ein Live-Wechsel zwischen mehreren Anbietern ist erst dann bestaetigt, wenn er tatsaechlich beobachtet wurde. Der Windows-Starter muss auf Windows geprueft werden; ein Linux-Test allein bestaetigt ihn nicht.
 
 FreeLLMAPI ist ein eigenstaendiges Projekt: https://github.com/tashfeenahmed/freellmapi. Neu Chat ist keine offizielle OpenAI- oder Anthropic-Anwendung.

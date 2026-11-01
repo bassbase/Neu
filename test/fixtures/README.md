@@ -1,0 +1,1 @@
+`folders.rar` und `encrypted.rar` sind unveraenderte Testdateien `FolderTest.rar` und `HeaderEnc1234.rar` aus https://github.com/YuJianrong/node-unrar.js/tree/master/testFiles . Die MIT-Lizenz liegt in UNRAR-FIXTURE-LICENSE.md. Sie enthalten kuenstliche Testdaten, keine Benutzerdateien. Die ZIP-, PDF-, DOCX-, Bild- und Videobeispiele werden von den Tests lokal erzeugt.

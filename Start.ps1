@@ -5,6 +5,20 @@ try {
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node.js fehlt. Bitte zuerst Node.js 22 installieren und das Fenster neu oeffnen.' }
     $major = [int]((& node --version) -replace '^v(\d+).*$', '$1')
     if ($major -lt 22 -or $major -ge 25) { throw 'Bitte Node.js 22 oder 24 verwenden.' }
+    if (-not $Claude) {
+        $lockHash = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'package-lock.json') -Algorithm SHA256).Hash
+        $stampFile = Join-Path $PSScriptRoot 'node_modules\.neu-lock-hash'
+        $installedHash = if (Test-Path -LiteralPath $stampFile) { (Get-Content -Raw -LiteralPath $stampFile).Trim() } else { '' }
+        if ($installedHash -ne $lockHash) {
+            Write-Host 'Installiere Dateiverarbeitung und Videowerkzeug. Beim ersten Start kann das einige Minuten dauern ...'
+            Push-Location -LiteralPath $PSScriptRoot
+            try {
+                & npm.cmd ci --omit=dev --no-audit --no-fund
+                if ($LASTEXITCODE -ne 0) { throw 'Installation fehlgeschlagen. Bitte die Meldung oben pruefen.' }
+                Set-Content -LiteralPath $stampFile -Value $lockHash -Encoding ASCII
+            } finally { Pop-Location }
+        }
+    }
     $gatewayRoot = Join-Path $env:USERPROFILE 'FreeLLMAPI'
     function Test-Gateway {
         try { return ((Invoke-RestMethod 'http://127.0.0.1:3001/livez' -TimeoutSec 2).status -eq 'ok') } catch { return $false }

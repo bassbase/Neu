@@ -3,6 +3,9 @@ const messages = [];
 let busy = false;
 let controller;
 let configured = false;
+let pendingFiles = [];
+let uploading = false;
+const allFiles = new Set();
 const dialog = $('#settings');
 function notice(text) { $('#notice').textContent = text; $('#notice').hidden = !text; }
 async function api(path, options) {
@@ -38,28 +41,37 @@ function addMessage(role, content) {
   const name = document.createElement('span'); name.textContent = role === 'user' ? 'Du' : '✦ Neu';
   const model = document.createElement('span'); model.className = 'model';
   const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'copy'; copy.textContent = 'Kopieren';
+  const download = document.createElement('button'); download.type = 'button'; download.className = 'copy'; download.textContent = 'Speichern';
   const text = document.createElement('div'); text.className = 'text'; text.textContent = content;
   copy.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(text.textContent); copy.textContent = 'Kopiert'; setTimeout(() => copy.textContent = 'Kopieren', 1500); }
     catch { notice('Kopieren nicht erlaubt. Markiere den Text und nutze Strg+C.'); }
   });
-  byline.append(name, model, copy); article.append(byline, text); $('#messages').append(article);
+  download.addEventListener('click', () => {
+    const link = document.createElement('a'); const url = URL.createObjectURL(new Blob([text.textContent], { type: 'text/plain;charset=utf-8' }));
+    link.href = url; link.download = 'KI-Antwort.txt'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+  });
+  byline.append(name, model, copy); if (role === 'assistant') byline.append(download);
+  article.append(byline, text); $('#messages').append(article);
   return { article, text, model };
 }
 function scroll() { $('#conversation').scrollTop = $('#conversation').scrollHeight; }
 function setBusy(value) {
-  busy = value; $('#send').disabled = value; $('#stop').hidden = !value; $('#model').disabled = value; $('#new-chat').disabled = value;
+  busy = value; $('#send').disabled = value || uploading; $('#stop').hidden = !value; $('#model').disabled = value; $('#new-chat').disabled = value || uploading; $('#attach').disabled = value || uploading;
 }
 async function send(event) {
   event.preventDefault();
-  if (busy) return;
+  if (busy || uploading) return;
   const content = $('#prompt').value.trim();
-  if (!content) return;
+  if (!content && !pendingFiles.length) return;
   if (!configured) { dialog.showModal(); return; }
   if (messages.length >= 78) { notice('Dieser Chat ist sehr lang. Starte bitte einen neuen Chat.'); return; }
   notice(''); setBusy(true);
-  const history = [...messages, { role: 'user', content }];
-  addMessage('user', content);
+  const sentFiles = [...pendingFiles];
+  const current = { role: 'user', content, ...(sentFiles.length ? { attachments: sentFiles.map(f => f.id) } : {}) };
+  const history = [...messages, current];
+  addMessage('user', [content, ...sentFiles.map(f => `📎 ${f.name} — ${f.summary}`)].filter(Boolean).join('\n'));
+  pendingFiles = []; renderFiles();
   $('#prompt').value = ''; $('#prompt').style.height = '';
   const output = addMessage('assistant', 'Denkt nach …'); output.article.classList.add('pending'); scroll();
   controller = new AbortController();
@@ -88,18 +100,23 @@ async function send(event) {
     }
     buffer += decoder.decode(); if (buffer.trim()) await line(buffer);
     if (!done || !answer) throw new Error('Die Antwort wurde nicht vollständig übertragen. Bitte erneut versuchen.');
-    messages.push({ role: 'user', content }, { role: 'assistant', content: answer });
+    messages.push(current, { role: 'assistant', content: answer });
   } catch (error) {
     output.text.textContent = answer || (error.name === 'AbortError' ? 'Antwort gestoppt.' : 'Keine Antwort erhalten.');
     notice(error.name === 'AbortError' ? 'Gestoppt. Deine Nachricht steht für einen neuen Versuch bereit.' : error.message);
     $('#prompt').value = content;
-  } finally { output.article.classList.remove('pending'); setBusy(false); $('#prompt').focus(); }
+    pendingFiles = sentFiles; renderFiles();
+  } finally { output.article.classList.remove('pending'); setBusy(false); renderFiles(); $('#prompt').focus(); }
 }
 $('#chat-form').addEventListener('submit', send);
 $('#stop').addEventListener('click', () => controller?.abort());
 $('#prompt').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#chat-form').requestSubmit(); } });
 $('#prompt').addEventListener('input', () => { $('#prompt').style.height = 'auto'; $('#prompt').style.height = `${Math.min($('#prompt').scrollHeight, 180)}px`; });
-$('#new-chat').addEventListener('click', () => { messages.length = 0; $('#messages').replaceChildren(); $('#welcome').hidden = false; $('#prompt').value = ''; notice(''); $('#prompt').focus(); });
+$('#new-chat').addEventListener('click', () => {
+  for (const id of allFiles) fetch('/api/attachments/' + id, { method: 'DELETE' }).catch(() => {});
+  allFiles.clear(); pendingFiles = []; renderFiles(); messages.length = 0;
+  $('#messages').replaceChildren(); $('#welcome').hidden = false; $('#prompt').value = ''; notice(''); $('#prompt').focus();
+});
 $('#connection').addEventListener('click', () => dialog.showModal());
 $('#close-settings').addEventListener('click', () => dialog.close());
 $('#model').addEventListener('change', () => { $('#routing-label').textContent = $('#model').value === 'auto' ? '✦ Automatische Modellwahl über FreeLLMAPI' : '✦ Gewähltes Modell · Fallback gemäß Gateway'; });
@@ -112,4 +129,37 @@ $('#connection-form').addEventListener('submit', async e => {
   } catch (error) { $('#connection-error').textContent = error.message; }
   finally { $('#save-key').disabled = false; }
 });
+function renderFiles() {
+  $('#attachments').replaceChildren();
+  for (const file of pendingFiles) {
+    const chip = document.createElement('div'); chip.className = 'attachment';
+    const label = document.createElement('span'); label.textContent = `📎 ${file.name}`;
+    const detail = document.createElement('small'); detail.textContent = [file.summary, ...(file.warnings ?? [])].join(' · ');
+    const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label', `${file.name} entfernen`); remove.disabled = busy || uploading;
+    remove.addEventListener('click', async () => {
+      pendingFiles = pendingFiles.filter(f => f.id !== file.id); allFiles.delete(file.id); renderFiles();
+      await fetch('/api/attachments/' + file.id, { method: 'DELETE' }).catch(() => {});
+    });
+    chip.append(label, remove, detail); $('#attachments').append(chip);
+  }
+}
+async function upload(files) {
+  if (busy || uploading || !files.length) return;
+  if (files.length + pendingFiles.length > 5) { notice('Bitte höchstens 5 Dateien pro Nachricht anhängen.'); return; }
+  if ([...files].some(f => f.size > 25 * 1024 * 1024)) { notice('Pro Datei sind höchstens 25 MB möglich.'); return; }
+  if ([...files].reduce((n, f) => n + f.size, 0) > 50 * 1024 * 1024) { notice('Bitte zusammen höchstens 50 MB auf einmal hochladen.'); return; }
+  uploading = true; setBusy(false); $('#attach').textContent = 'Wird gelesen …'; notice('Dateien werden lokal geprüft. Erst beim Senden erhält der KI-Anbieter die gelesenen Inhalte.');
+  try {
+    const data = new FormData(); for (const file of files) data.append('files', file);
+    const response = await api('/api/attachments', { method: 'POST', body: data });
+    for (const file of response.attachments) { pendingFiles.push(file); allFiles.add(file.id); }
+    notice(response.errors.length ? response.errors.map(f => `${f.name}: ${f.error}`).join('\n') : 'Anhänge bereit. Beim Senden werden gelesener Text und ggf. Bilder an deinen KI-Anbieter übertragen.');
+  } catch (error) { notice(error.message); }
+  finally { uploading = false; $('#attach').textContent = '＋ Dateien'; setBusy(false); renderFiles(); $('#files').value = ''; }
+}
+$('#attach').addEventListener('click', () => $('#files').click());
+$('#files').addEventListener('change', () => upload([...$('#files').files]));
+$('#chat-form').addEventListener('dragover', e => { e.preventDefault(); });
+$('#chat-form').addEventListener('drop', e => { e.preventDefault(); upload([...e.dataTransfer.files]); });
+$('#prompt').addEventListener('paste', e => { if (e.clipboardData.files.length) { e.preventDefault(); upload([...e.clipboardData.files]); } });
 await refresh();
